@@ -1,26 +1,52 @@
 package com.example.intelligentbustracker.service
 
+import android.content.Context
+import android.util.Log
+import com.example.intelligentbustracker.R
+import com.example.intelligentbustracker.model.Bus
+import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import org.apache.commons.csv.CSVFormat
+import org.apache.commons.csv.CSVParser
 
-class DataManager {
+class DataManager(private val context: Context) {
 
-    val stations = HashMap<String, Station>()
-
-    init {
-        initializeStations()
+    fun initializeStations(): ArrayList<Station> {
+        Log.i("DataManager", "initializeStations: starting read")
+        val inputStream = context.resources.openRawResource(R.raw.stations)
+        val stations = ArrayList<Station>()
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        val csvParser = CSVParser(
+            reader, CSVFormat.DEFAULT
+                .withFirstRecordAsHeader()
+        )
+        for (csvRecord in csvParser) {
+            stations.add(Station(csvRecord[0], csvRecord[1].toDouble(), csvRecord[2].toDouble()))
+        }
+        Log.i("DataManager", "initializeStations: done read")
+        return stations
     }
 
-    private fun initializeStations() {
-        var station1 = Station("03213213", "A")
-        var station2 = Station("03253213", "Asd")
-        var station3 = Station("64321321", "GGG")
-        var station4 = Station("22112453", "Wdwaf")
-        var station5 = Station("63266678", "Ardhrdhrd")
-
-        stations[station1.stationId] = station1
-        stations[station2.stationId] = station2
-        stations[station3.stationId] = station3
-        stations[station4.stationId] = station4
-        stations[station5.stationId] = station5
+    fun initializeBuses(): ArrayList<Bus> {
+        Log.i("DataManager", "initializeBuses: starting read")
+        val inputStream = context.resources.openRawResource(R.raw.buses)
+        val buses = ArrayList<Bus>()
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        val csvParser = CSVParser(
+            reader, CSVFormat.DEFAULT
+                .withFirstRecordAsHeader()
+        )
+        for (csvRecord in csvParser) {
+            val scheduleRoute1 = ArrayList<String>()
+            val scheduleRoute2 = ArrayList<String>()
+            scheduleRoute1.addAll(csvRecord[1].split(';'))
+            scheduleRoute2.addAll(csvRecord[2].split(';'))
+            buses.add(Bus(csvRecord[0], Schedule(scheduleRoute1, scheduleRoute2)))
+        }
+        Log.i("DataManager", "initializeBuses: done read")
+        return buses
     }
+
 }

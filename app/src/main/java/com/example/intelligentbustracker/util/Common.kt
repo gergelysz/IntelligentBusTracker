@@ -4,11 +4,11 @@ import android.content.Context
 import android.location.Location
 import android.preference.PreferenceManager
 import java.text.DateFormat
-import java.util.*
+import java.util.Date
 
 object Common {
 
-    val KEY_REQUEST_LOCATION_UPDATE = "requesting_location_update"
+    const val KEY_REQUEST_LOCATION_UPDATE = "requesting_location_update"
 
     fun getLocationText(location: Location?): String {
         return if (location == null)
@@ -23,13 +23,13 @@ object Common {
 
     fun setRequestingLocationUpdates(context: Context, value: Boolean) {
         PreferenceManager.getDefaultSharedPreferences(context)
-            .edit()
-            .putBoolean(KEY_REQUEST_LOCATION_UPDATE, value)
-            .apply()
+                .edit()
+                .putBoolean(KEY_REQUEST_LOCATION_UPDATE, value)
+                .apply()
     }
 
     fun requestingLocationUpdates(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context)
-            .getBoolean(KEY_REQUEST_LOCATION_UPDATE, false)
+                .getBoolean(KEY_REQUEST_LOCATION_UPDATE, false)
     }
 }

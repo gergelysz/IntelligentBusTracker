@@ -1,4 +1,3 @@
 package com.example.intelligentbustracker.model
 
-class Station(val stationId: String, val name: String) {
-}
+class Station(val name: String, val latitude: Double, val longitude: Double)
