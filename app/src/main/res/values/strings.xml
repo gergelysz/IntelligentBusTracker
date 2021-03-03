@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">IntelligentBusTracker</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="app_name">Intelligent Bus Tracker</string>
+    <string name="title_activity_maps">Map of the city</string>
+    <string name="load_map">Load map</string>
 </resources>
