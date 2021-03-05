@@ -19,6 +19,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.intelligentbustracker.R
+import com.example.intelligentbustracker.activity.MainActivity
 import com.example.intelligentbustracker.location.BackgroundLocation
 import com.example.intelligentbustracker.util.Common
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -34,14 +35,12 @@ class LocationService : Service() {
         private const val CHANNEL_ID = "channel_01"
         private const val PACKAGE_NAME = "com.example.intelligentbustracker"
         private const val EXTRA_STARTED_FROM_NOTIFICATION = "$PACKAGE_NAME.started_from_notification"
-        private const val UPDATE_INTERVAL_IN_MIL: Long = 2000
-        private const val FASTEST_UPDATE_INTERVAL_IN_MIL: Long = UPDATE_INTERVAL_IN_MIL / 2
         private const val NOTIFICATION_ID = 1234
     }
 
     private val mBinder = LocalBinder()
 
-    inner class LocalBinder : Binder() {
+    inner class LocalBinder() : Binder() {
         internal val service: LocationService
             get() = this@LocationService
     }
@@ -61,19 +60,19 @@ class LocationService : Service() {
             intent.putExtra(EXTRA_STARTED_FROM_NOTIFICATION, true)
             val servicePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
             val activityPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-            val builder = NotificationCompat.Builder(this)
-                    .addAction(R.drawable.common_google_signin_btn_icon_dark_focused, "Launch", activityPendingIntent)
-                    .addAction(R.drawable.common_full_open_on_phone, "Cancel", servicePendingIntent)
-                    .setContentText(text)
-                    .setContentTitle(Common.getLocationTitle(this))
-                    .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_MIN)
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setTicker(text)
-                    .setWhen(System.currentTimeMillis())
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                builder.setChannelId(CHANNEL_ID)
-            }
+            val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+                .addAction(R.drawable.ic_bus_launcher_foreground, "Launch", activityPendingIntent)
+                .addAction(R.drawable.ic_cancel, "Cancel", servicePendingIntent)
+                .setContentText(text)
+                .setContentTitle(Common.getLocationTitle(this))
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setTicker(text)
+                .setWhen(System.currentTimeMillis())
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                builder.setChannelId(CHANNEL_ID)
+//            }
             return builder.build()
         }
 
@@ -83,7 +82,7 @@ class LocationService : Service() {
             override fun onLocationResult(p0: LocationResult) {
                 super.onLocationResult(p0)
                 Log.i("LocationService", "onLocationResult: ${p0.lastLocation}")
-                onNewLocation(p0!!.lastLocation)
+                onNewLocation(p0.lastLocation)
             }
         }
 
@@ -130,22 +129,26 @@ class LocationService : Service() {
     private fun getLastLocation() {
         try {
             fusedLocationProviderClient!!.lastLocation
-                    .addOnCompleteListener { task ->
-                        if (task.isSuccessful && task.result != null)
-                            mLocation = task.result
-                        else
-                            Log.e("getLastLocation", "Failed to get location")
-                    }
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful && task.result != null)
+                        mLocation = task.result
+                    else
+                        Log.e("getLastLocation", "Failed to get location")
+                }
         } catch (ex: SecurityException) {
             Log.e("getLastLocation", "" + ex.message)
         }
     }
 
     private fun createLocationRequest() {
-        locationRequest = LocationRequest()
-        locationRequest!!.interval = UPDATE_INTERVAL_IN_MIL
-        locationRequest!!.fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MIL
-        locationRequest!!.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        locationRequest = LocationRequest.create()
+        locationRequest!!.interval = MainActivity.updateInterval.toLong()
+        locationRequest!!.fastestInterval = MainActivity.updateInterval.toLong()
+        locationRequest!!.priority = MainActivity.updateAccuracy.toInt()
+//        locationRequest = LocationRequest()
+//        locationRequest!!.interval = UPDATE_INTERVAL_IN_MIL
+//        locationRequest!!.fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MIL
+//        locationRequest!!.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
     }
 
     private fun onNewLocation(lastLocation: Location?) {
@@ -158,7 +161,7 @@ class LocationService : Service() {
     private fun serviceIsRunningInForeground(context: Context): Boolean {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (javaClass.name.equals(service.service.className) && service.foreground) {
+            if (javaClass.name == service.service.className && service.foreground) {
                 return true
             }
         }

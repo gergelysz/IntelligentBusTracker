@@ -2,7 +2,7 @@ package com.example.intelligentbustracker.util
 
 import android.content.Context
 import android.location.Location
-import android.preference.PreferenceManager
+import androidx.preference.PreferenceManager
 import java.text.DateFormat
 import java.util.Date
 
@@ -14,7 +14,7 @@ object Common {
         return if (location == null)
             "Unknown location"
         else
-            "" + location.latitude + "/" + location.longitude
+            "${location.latitude} / ${location.longitude}"
     }
 
     fun getLocationTitle(context: Context): String {
@@ -23,13 +23,13 @@ object Common {
 
     fun setRequestingLocationUpdates(context: Context, value: Boolean) {
         PreferenceManager.getDefaultSharedPreferences(context)
-                .edit()
-                .putBoolean(KEY_REQUEST_LOCATION_UPDATE, value)
-                .apply()
+            .edit()
+            .putBoolean(KEY_REQUEST_LOCATION_UPDATE, value)
+            .apply()
     }
 
     fun requestingLocationUpdates(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(KEY_REQUEST_LOCATION_UPDATE, false)
+            .getBoolean(KEY_REQUEST_LOCATION_UPDATE, false)
     }
 }
