@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.preference.PreferenceManager
+import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.fragment.SettingsFragment
 import kotlinx.android.synthetic.main.activity_settings.*
@@ -40,16 +41,16 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             "key_location_update_interval" -> {
-                MainActivity.updateInterval = sharedPreferences!!.getString(key, "5000") ?: "5000"
+                BusTrackerApplication.updateInterval = sharedPreferences!!.getString(key, "5000") ?: "5000"
             }
             "key_location_update_accuracy" -> {
-                MainActivity.updateAccuracy = sharedPreferences!!.getString(key, "100") ?: "100"
+                BusTrackerApplication.updateAccuracy = sharedPreferences!!.getString(key, "100") ?: "100"
             }
             "key_focus_map_center_on_current_location" -> {
-                MainActivity.focusOnCenter = sharedPreferences!!.getBoolean(key, false).toString()
+                BusTrackerApplication.focusOnCenter = sharedPreferences!!.getBoolean(key, false).toString()
             }
             "key_map_theme" -> {
-                MainActivity.mapTheme = sharedPreferences!!.getString(key, "map_style_retro") ?: "map_style_retro"
+                BusTrackerApplication.mapTheme = sharedPreferences!!.getString(key, "map_style_retro") ?: "map_style_retro"
             }
         }
     }

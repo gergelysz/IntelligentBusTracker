@@ -1,6 +1,5 @@
 package com.example.intelligentbustracker.activity
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -9,7 +8,6 @@ import android.content.SharedPreferences
 import android.location.Location
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -20,20 +18,20 @@ import com.directions.route.Route
 import com.directions.route.RouteException
 import com.directions.route.Routing
 import com.directions.route.RoutingListener
+import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.location.BackgroundLocation
-import com.example.intelligentbustracker.model.Bus
-import com.example.intelligentbustracker.model.Station
 import com.example.intelligentbustracker.service.LocationService
 import com.example.intelligentbustracker.util.Common
+import com.example.intelligentbustracker.util.GeneralUtils
 import com.example.intelligentbustracker.util.MapUtils
-import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
@@ -45,11 +43,11 @@ import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_maps.remove_location_updates_button
 import kotlinx.android.synthetic.main.activity_maps.request_location_updates_button
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -57,19 +55,11 @@ import org.greenrobot.eventbus.ThreadMode
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.OnSharedPreferenceChangeListener, RoutingListener {
 
     private lateinit var mMap: GoogleMap
+    private lateinit var stationMarkers: List<MarkerOptions>
 
-    private lateinit var stations: ArrayList<Station>
-    private lateinit var buses: ArrayList<Bus>
-
-    var myLocation: Location? = null
-    var destinationLocation: Location? = null
-    private var start: LatLng? = null
-    private var end: LatLng? = null
-    private var polylines: ArrayList<Polyline>? = null
-
-    private lateinit var deferredStationMarkers: Deferred<ArrayList<MarkerOptions>>
-    lateinit var stationMarkers: ArrayList<MarkerOptions>
-
+    private var myLocation: Location? = null
+    private var polyLines = arrayListOf<Polyline>()
+    private var clickedMarker: Marker? = null
 
     private var mService: LocationService? = null
     private var mBound = false
@@ -89,9 +79,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
     @Suppress("unused")
     @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
     fun onBackgroundLocationRetrieve(event: BackgroundLocation) {
-        Toast.makeText(this, Common.getLocationText(event.location), Toast.LENGTH_SHORT).show()
+        Toast.makeText(this@MapsActivity, Common.getLocationText(event.location), Toast.LENGTH_SHORT).show()
         myLocation = event.location
-        if (MainActivity.focusOnCenter.toBoolean()) {
+        if (BusTrackerApplication.focusOnCenter.toBoolean()) {
             moveCamera(event.location)
         }
     }
@@ -102,22 +92,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
+
         mapFragment.getMapAsync(this@MapsActivity)
 
-        // get items
-        stations = MainActivity.stations
-        buses = MainActivity.buses
+        // get list of permissions
+        val permissions = GeneralUtils.getPermissionList()
 
-        // permissions
         Dexter.withContext(applicationContext)
-            .withPermissions(
-                listOf(
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                    Manifest.permission.FOREGROUND_SERVICE
-                )
-            )
+            .withPermissions(permissions)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(p0: MultiplePermissionsReport?) {
                     request_location_updates_button.setOnClickListener {
@@ -192,27 +174,86 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this@MapsActivity, resources.getIdentifier(MainActivity.mapTheme, "raw", this.packageName)))
+        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this@MapsActivity, resources.getIdentifier(BusTrackerApplication.mapTheme, "raw", this.packageName)))
 
-        mMap.setOnMapClickListener {
-            end = it
-            start = LatLng(myLocation!!.latitude, myLocation!!.longitude)
-            findRoutes(start, end)
+        val scope = CoroutineScope(Dispatchers.Default)
+        val jobCreateMarkers: Deferred<List<MarkerOptions>> = scope.async { MapUtils.createStationsMarkers(BusTrackerApplication.stations, applicationContext) }
+
+        mMap.setOnMapClickListener { clickedLocation ->
+            val closestStation = MapUtils.getClosestStation(clickedLocation)
+            closestStation?.let {
+                findRoutes(clickedLocation, LatLng(closestStation.latitude, closestStation.longitude))
+                Toast.makeText(this@MapsActivity, "Found closest station: ${closestStation.name}", Toast.LENGTH_SHORT).show()
+            }
         }
 
         mMap.setMaxZoomPreference(20F)
         mMap.setMinZoomPreference(15F)
         val tgMuresDefault = LatLng(46.539892, 24.558334)
-        mMap.addMarker(MarkerOptions().position(tgMuresDefault).title("Marker in Marosvásárhely"))
         mMap.moveCamera(CameraUpdateFactory.newLatLng(tgMuresDefault))
 
-        GlobalScope.launch(Dispatchers.Main) {
-            deferredStationMarkers = async(Dispatchers.Default) { MapUtils.createStationsMarkers(MainActivity.stations, applicationContext) }
-            // TODO: Other async tasks
-            stationMarkers = deferredStationMarkers.await()
+        // Get results from async methods
+        runBlocking {
+            stationMarkers = try {
+                jobCreateMarkers.await()
+            } catch (ex: Exception) {
+                ArrayList()
+            }
             MapUtils.addStationMarkers(mMap, stationMarkers)
         }
-        Log.e("MapUtils", "MapUtils: after called ")
+    }
+
+    /**
+     * Method to find the route.
+     */
+    private fun findRoutes(start: LatLng?, end: LatLng?) {
+        if (start == null || end == null) {
+            Toast.makeText(this@MapsActivity, "Unable to get location", Toast.LENGTH_LONG).show()
+        } else {
+            val routing = Routing.Builder()
+                .travelMode(AbstractRouting.TravelMode.WALKING)
+                .withListener(this@MapsActivity)
+                .alternativeRoutes(true)
+                .waypoints(start, end)
+                .key(getString(R.string.google_maps_key))
+                .build()
+            routing.execute()
+        }
+    }
+
+    /**
+     * When route if found.
+     */
+    override fun onRoutingSuccess(route: ArrayList<Route>, shortestRouteIndex: Int) {
+        polyLines = if (!polyLines.isNullOrEmpty()) {
+            for (polyline in polyLines) {
+                polyline.remove()
+            }
+            ArrayList()
+        } else {
+            ArrayList()
+        }
+        val polyOptions = PolylineOptions()
+        var polylineStartLatLng: LatLng? = null
+        //add route(s) to the map using polyline
+        for (i in 0 until route.size) {
+            if (i == shortestRouteIndex) {
+                polyOptions.color(ContextCompat.getColor(this@MapsActivity, R.color.green))
+                polyOptions.width(7f)
+                polyOptions.addAll(route[shortestRouteIndex].points)
+                val polyline = mMap.addPolyline(polyOptions)
+                polylineStartLatLng = polyline.points[0]
+                polyLines.add(polyline)
+            } else {
+            }
+        }
+
+        clickedMarker = if (clickedMarker == null) {
+            mMap.addMarker(MarkerOptions().position(polylineStartLatLng!!).title("My location"))
+        } else {
+            clickedMarker!!.remove()
+            mMap.addMarker(MarkerOptions().position(polylineStartLatLng!!).title("My location"))
+        }
     }
 
     //Routing call back functions.
@@ -226,66 +267,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
         Toast.makeText(this@MapsActivity, "Finding Route...", Toast.LENGTH_LONG).show()
     }
 
-    //If Route finding success..
-    override fun onRoutingSuccess(route: ArrayList<Route>, shortestRouteIndex: Int) {
-        val center = CameraUpdateFactory.newLatLng(start)
-        val zoom = CameraUpdateFactory.zoomTo(16f)
-        if (polylines != null) {
-            polylines = ArrayList()
-        }
-        val polyOptions = PolylineOptions()
-        var polylineStartLatLng: LatLng? = null
-        var polylineEndLatLng: LatLng? = null
-        polylines = ArrayList()
-        //add route(s) to the map using polyline
-        for (i in 0 until route.size) {
-            if (i == shortestRouteIndex) {
-                polyOptions.color(ContextCompat.getColor(this, R.color.blue))
-                polyOptions.width(7f)
-                polyOptions.addAll(route[shortestRouteIndex].points)
-                val polyline = mMap.addPolyline(polyOptions)
-                polylineStartLatLng = polyline.points[0]
-                val k: Int = polyline.points.size
-                polylineEndLatLng = polyline.points[k - 1]
-                polylines!!.add(polyline)
-            } else {
-            }
-        }
-
-        //Add Marker on route starting position
-        val startMarker = MarkerOptions()
-        startMarker.position(polylineStartLatLng!!)
-        startMarker.title("My Location")
-        mMap.addMarker(startMarker)
-
-        //Add Marker on route ending position
-        val endMarker = MarkerOptions()
-        endMarker.position(polylineEndLatLng!!)
-        endMarker.title("Destination")
-        mMap.addMarker(endMarker)
-    }
-
     override fun onRoutingCancelled() {
-        findRoutes(start, end)
-    }
-
-    fun onConnectionFailed(connectionResult: ConnectionResult) {
-        findRoutes(start, end)
-    }
-
-    // function to find Routes.
-    private fun findRoutes(start: LatLng?, end: LatLng?) {
-        if (start == null || end == null) {
-            Toast.makeText(this@MapsActivity, "Unable to get location", Toast.LENGTH_LONG).show()
-        } else {
-            val routing = Routing.Builder()
-                .travelMode(AbstractRouting.TravelMode.DRIVING)
-                .withListener(this)
-                .alternativeRoutes(true)
-                .waypoints(start, end)
-                .key(getString(R.string.google_maps_key))
-                .build()
-            routing.execute()
-        }
+        Toast.makeText(this@MapsActivity, "Routing cancelled", Toast.LENGTH_LONG).show()
     }
 }

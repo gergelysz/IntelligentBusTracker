@@ -1,3 +1,3 @@
 package com.example.intelligentbustracker.model
 
-class Schedule(val scheduleRoute1: ArrayList<String>, val scheduleRoute2: ArrayList<String>)
+data class Schedule(val busNumber: String, val leavingHours1: LeavingHours, val leavingHours2: LeavingHours)

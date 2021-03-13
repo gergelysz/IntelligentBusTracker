@@ -18,8 +18,8 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
-import com.example.intelligentbustracker.activity.MainActivity
 import com.example.intelligentbustracker.location.BackgroundLocation
 import com.example.intelligentbustracker.util.Common
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -40,7 +40,7 @@ class LocationService : Service() {
 
     private val mBinder = LocalBinder()
 
-    inner class LocalBinder() : Binder() {
+    inner class LocalBinder : Binder() {
         internal val service: LocationService
             get() = this@LocationService
     }
@@ -142,13 +142,9 @@ class LocationService : Service() {
 
     private fun createLocationRequest() {
         locationRequest = LocationRequest.create()
-        locationRequest!!.interval = MainActivity.updateInterval.toLong()
-        locationRequest!!.fastestInterval = MainActivity.updateInterval.toLong()
-        locationRequest!!.priority = MainActivity.updateAccuracy.toInt()
-//        locationRequest = LocationRequest()
-//        locationRequest!!.interval = UPDATE_INTERVAL_IN_MIL
-//        locationRequest!!.fastestInterval = FASTEST_UPDATE_INTERVAL_IN_MIL
-//        locationRequest!!.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        locationRequest!!.interval = BusTrackerApplication.updateInterval.toLong()
+        locationRequest!!.fastestInterval = BusTrackerApplication.updateInterval.toLong()
+        locationRequest!!.priority = BusTrackerApplication.updateAccuracy.toInt()
     }
 
     private fun onNewLocation(lastLocation: Location?) {
@@ -168,7 +164,7 @@ class LocationService : Service() {
         return false
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
+    override fun onBind(intent: Intent?): IBinder {
         stopForeground(true)
         mChangingConfiguration = false
         return mBinder
