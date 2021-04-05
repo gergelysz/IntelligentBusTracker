@@ -25,6 +25,11 @@
             android:defaultValue="@string/focus_map_center_default"
             android:key="@string/key_focus_map_center_on_current_location"
             android:title="@string/title_focus_map_center_on_current_location" />
+
+        <SwitchPreference
+            android:defaultValue="@string/intelligent_bus_track_default"
+            android:key="@string/key_intelligent_bus_track"
+            android:title="@string/title_intelligent_bus_track" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Interface">

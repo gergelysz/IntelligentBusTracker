@@ -53,6 +53,11 @@
     <string name="title_focus_map_center_on_current_location">Focus map center on current location</string>
     <string name="focus_map_center_default">false</string>
 
+    <!-- Intelligent Bus Track -->
+    <string name="key_intelligent_bus_track">key_intelligent_bus_track</string>
+    <string name="title_intelligent_bus_track">Let the application manage status</string>
+    <string name="intelligent_bus_track_default">true</string>
+
     <!-- Map themes -->
     <string name="map_theme">Map theme</string>
     <string name="key_map_theme">key_map_theme</string>
@@ -76,4 +81,21 @@
     </string-array>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="closest_station">Closest station: %s</string>
+    <string name="text_bus_number">44</string>
+    <string name="custom_location_setup_yes_button_text">Yes</string>
+    <string name="custom_location_setup_no_button_text">No</string>
+    <string name="custom_location_setup_text_view_text">Your current location in unknown. Do you want to choose a custom location from the map as your current location?</string>
+    <string name="application_logo">Application Logo</string>
+    <string name="please_select_your_current_status">Please select your current status:</string>
+    <string name="waiting_for_bus">Waiting for bus</string>
+    <string name="on_bus">On bus</string>
+    <string name="please_select_whether_you_want_your_location_to_be_tracked_or_not">Please select whether you want your location to be tracked or not:</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="please_select_direction_for_bus_44">Please select direction for bus: 44</string>
+    <string name="direction1">Direction1</string>
+    <string name="direction2">Direction2</string>
 </resources>

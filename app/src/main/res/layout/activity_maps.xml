@@ -1,26 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:theme="@style/FontGlobalLight">
+
+    <TextView
+        android:id="@+id/text_view_closest_station"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/peru"
+        android:backgroundTint="@color/peru"
+        android:padding="4dp"
+        android:text="@string/closest_station"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:theme="@style/FontGlobalRegular" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="500dp"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottom_navigation_view"
+        android:layout_below="@id/text_view_closest_station"
         tools:context=".activity.MapsActivity" />
 
-    <Button
-        android:id="@+id/request_location_updates_button"
-        android:layout_width="wrap_content"
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation_view"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start location updates" />
+        android:layout_alignParentBottom="true"
+        android:elevation="0dp"
+        app:itemBackground="@color/peru"
+        app:itemHorizontalTranslationEnabled="false"
+        app:itemIconTint="@color/white_smoke"
+        app:itemTextAppearance="@style/FontGlobalLight"
+        app:itemTextAppearanceActive="@style/FontGlobalLight"
+        app:itemTextAppearanceInactive="@style/FontGlobalLight"
+        app:itemTextColor="@color/white_smoke"
+        app:labelVisibilityMode="unlabeled"
+        app:menu="@menu/nav_menu" />
 
-    <Button
-        android:id="@+id/remove_location_updates_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Remove location updates" />
-</LinearLayout>
+</RelativeLayout>

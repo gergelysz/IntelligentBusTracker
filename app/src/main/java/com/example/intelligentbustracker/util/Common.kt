@@ -17,7 +17,7 @@ object Common {
             "${location.latitude} / ${location.longitude}"
     }
 
-    fun getLocationTitle(context: Context): String {
+    fun getLocationTitle(): String {
         return String.format("Location Updated: ${DateFormat.getDateInstance().format(Date())}")
     }
 

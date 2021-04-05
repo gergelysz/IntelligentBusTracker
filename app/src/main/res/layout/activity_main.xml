@@ -11,6 +11,7 @@
         android:id="@+id/bus_logo_main_imageview"
         android:layout_width="200dp"
         android:layout_height="200dp"
+        android:contentDescription="@string/application_logo"
         android:src="@drawable/ic_bus"
         app:layout_constraintBottom_toTopOf="@id/bus_logo_main_textView"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -21,10 +22,10 @@
         android:id="@+id/bus_logo_main_textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/open_sans_regular"
         android:text="@string/bustracker"
         android:textColor="@color/white"
         android:textSize="25sp"
+        android:theme="@style/FontGlobalRegular"
         app:layout_constraintBottom_toTopOf="@id/bus_logo_main_description_textView"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -34,10 +35,10 @@
         android:id="@+id/bus_logo_main_description_textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/open_sans_light"
         android:text="@string/keep_track_of_your_public_transportation"
         android:textColor="@color/white"
         android:textSize="15sp"
+        android:theme="@style/FontGlobalLight"
         app:layout_constraintBottom_toTopOf="@id/button_container_linear_layout"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -58,27 +59,30 @@
             android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
-            android:background="@color/light_salmon"
+            android:background="@drawable/button_style"
             android:text="@string/load_map"
-            android:textColor="@color/white" />
+            android:textColor="@color/white"
+            android:theme="@style/FontGlobalBold" />
 
         <Button
             android:id="@+id/settings_button"
             android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
-            android:background="@color/light_salmon"
+            android:background="@drawable/button_style"
             android:text="@string/settings"
-            android:textColor="@color/white" />
+            android:textColor="@color/white"
+            android:theme="@style/FontGlobalBold" />
 
         <Button
             android:id="@+id/schedules_button"
             android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
-            android:background="@color/light_salmon"
+            android:background="@drawable/button_style"
             android:text="@string/check_schedules"
-            android:textColor="@color/white" />
+            android:textColor="@color/white"
+            android:theme="@style/FontGlobalBold" />
     </LinearLayout>
 
 

@@ -3,10 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".fragment.ScheduleMapFragment">
+    tools:context=".fragment.MapAssistFragment">
 
     <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/fragment_schedule_map_container"
+        android:id="@+id/fragment_map_assist_container"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

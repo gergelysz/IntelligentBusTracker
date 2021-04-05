@@ -1,10 +1,14 @@
 package com.example.intelligentbustracker
 
 import android.app.Application
+import androidx.lifecycle.MutableLiveData
 import com.example.intelligentbustracker.model.Bus
+import com.example.intelligentbustracker.model.BusRoute
 import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
+import com.example.intelligentbustracker.model.Status
 import com.example.intelligentbustracker.util.DataManager
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -15,12 +19,19 @@ class BusTrackerApplication : Application() {
 
     companion object {
         private lateinit var instance: BusTrackerApplication
+        private const val TAG = "BusTrackerApplication"
 
         fun getInstance(): BusTrackerApplication {
             return instance
         }
 
         private fun isInitialised() = ::instance.isInitialized
+
+        /**
+         * Stores the stations retrieved
+         * from stations.csv
+         */
+        var busRoutes: MutableList<BusRoute> = ArrayList()
 
         /**
          * Stores the stations retrieved
@@ -79,13 +90,24 @@ class BusTrackerApplication : Application() {
                 }
                 return field
             }
-        var mapTheme: String = "map_style_retro"
+
+        var mapTheme: MutableLiveData<String> = MutableLiveData("map_style_retro")
             get() {
-                if (field.isEmpty()) {
-                    field = DataManager(getInstance()).getSettingValueString(getInstance().getString(R.string.key_map_theme))
+                if (field.value!!.isEmpty()) {
+                    field.value = DataManager(getInstance()).getSettingValueString(getInstance().getString(R.string.key_map_theme))
                 }
                 return field
             }
+
+        var intelligentTracker: MutableLiveData<String> = MutableLiveData("true")
+            get() {
+                if (field.value!!.isEmpty()) {
+                    field.value = DataManager(getInstance()).getSettingValueString(getInstance().getString(R.string.key_intelligent_bus_track))
+                }
+                return field
+            }
+
+        var status: MutableLiveData<Status> = MutableLiveData(Status.WAITING_FOR_BUS)
     }
 
     override fun onCreate() {
@@ -102,34 +124,12 @@ class BusTrackerApplication : Application() {
             val deferredStations: Deferred<List<Station>> = async { dataManager.initializeStations() }
             val deferredBuses: Deferred<List<Bus>> = async { dataManager.initializeBuses() }
             val deferredSchedules: Deferred<List<Schedule>> = async { dataManager.initializeSchedules() }
-            val deferredFocusOnCenter: Deferred<String> = async { dataManager.getSettingValueString(getString(R.string.key_focus_map_center_on_current_location)) }
-            val deferredUpdateInterval: Deferred<String> = async { dataManager.getSettingValueString(getString(R.string.key_location_update_interval)) }
-            val deferredUpdateAccuracy: Deferred<String> = async { dataManager.getSettingValueString(getString(R.string.key_location_update_accuracy)) }
-            val deferredMapTheme: Deferred<String> = async { dataManager.getSettingValueString(getString(R.string.key_map_theme)) }
 
-            focusOnCenter = try {
-                deferredFocusOnCenter.await()
-            } catch (ex: Exception) {
-                ""
-            }
-
-            updateInterval = try {
-                deferredUpdateInterval.await()
-            } catch (ex: Exception) {
-                ""
-            }
-
-            updateAccuracy = try {
-                deferredUpdateAccuracy.await()
-            } catch (ex: Exception) {
-                ""
-            }
-
-            mapTheme = try {
-                deferredMapTheme.await()
-            } catch (ex: Exception) {
-                ""
-            }
+            focusOnCenter = dataManager.getSettingValueString(getString(R.string.key_focus_map_center_on_current_location))
+            updateInterval = dataManager.getSettingValueString(getString(R.string.key_location_update_interval))
+            updateAccuracy = dataManager.getSettingValueString(getString(R.string.key_location_update_accuracy))
+            mapTheme.postValue(dataManager.getSettingValueString(getString(R.string.key_map_theme)))
+            intelligentTracker.postValue(dataManager.getSettingValueString(getString(R.string.key_intelligent_bus_track)))
 
             stations = try {
                 deferredStations.await()
@@ -147,6 +147,24 @@ class BusTrackerApplication : Application() {
                 deferredSchedules.await()
             } catch (ex: Exception) {
                 ArrayList()
+            }
+
+            for (bus in buses) {
+                val stationsRoute1 = ArrayList<LatLng>()
+                for (station in bus.scheduleRoutes.scheduleRoute1) {
+                    val stationElement = stations.firstOrNull { x -> x.name == station }
+                    stationElement?.let {
+                        stationsRoute1.add(LatLng(it.latitude, it.longitude))
+                    }
+                }
+                val stationsRoute2 = ArrayList<LatLng>()
+                for (station in bus.scheduleRoutes.scheduleRoute2) {
+                    val stationElement = stations.firstOrNull { x -> x.name == station }
+                    stationElement?.let {
+                        stationsRoute2.add(LatLng(it.latitude, it.longitude))
+                    }
+                }
+                busRoutes.add(BusRoute(bus.number, stationsRoute1, stationsRoute2))
             }
         }
     }

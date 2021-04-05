@@ -6,26 +6,32 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.IBinder
-import android.view.View
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
 import androidx.preference.PreferenceManager
-import com.directions.route.AbstractRouting
 import com.directions.route.Route
 import com.directions.route.RouteException
-import com.directions.route.Routing
 import com.directions.route.RoutingListener
 import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
-import com.example.intelligentbustracker.location.BackgroundLocation
+import com.example.intelligentbustracker.fragment.RoutingMapFragment
+import com.example.intelligentbustracker.fragment.SearchDialogFragment
+import com.example.intelligentbustracker.fragment.UserStatusFragment
+import com.example.intelligentbustracker.model.Station
+import com.example.intelligentbustracker.model.Status
+import com.example.intelligentbustracker.model.User
+import com.example.intelligentbustracker.model.UserStatus
 import com.example.intelligentbustracker.service.LocationService
 import com.example.intelligentbustracker.util.Common
+import com.example.intelligentbustracker.util.DataManager
 import com.example.intelligentbustracker.util.GeneralUtils
 import com.example.intelligentbustracker.util.MapUtils
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -35,14 +41,8 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
-import com.google.android.material.snackbar.Snackbar
-import com.karumi.dexter.Dexter
-import com.karumi.dexter.MultiplePermissionsReport
-import com.karumi.dexter.PermissionToken
-import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.multi.MultiplePermissionsListener
-import kotlinx.android.synthetic.main.activity_maps.remove_location_updates_button
-import kotlinx.android.synthetic.main.activity_maps.request_location_updates_button
+import kotlinx.android.synthetic.main.activity_maps.bottom_navigation_view
+import kotlinx.android.synthetic.main.activity_maps.text_view_closest_station
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -52,22 +52,46 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.OnSharedPreferenceChangeListener, RoutingListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.OnSharedPreferenceChangeListener, RoutingListener, SearchDialogFragment.SearchDialogListener, GoogleMap.OnMapClickListener, UserStatusFragment.OnStatusChangeListener {
 
     private lateinit var mMap: GoogleMap
-    private lateinit var stationMarkers: List<MarkerOptions>
 
-    private var myLocation: Location? = null
+    private lateinit var chosenStation: Station
+    private lateinit var closestStation: Station
+
+    private var currentUser: MutableLiveData<User> = MutableLiveData()
+    private var usersList: MutableLiveData<List<User>> = MutableLiveData()
+
+    private var currentUserMarker: Marker? = null
+    private var usersMarkers: MutableList<Marker>? = null
+    private var stationMarkers: List<Marker>? = null
+
+    private var latestMapTheme: String = BusTrackerApplication.mapTheme.value ?: DataManager(this@MapsActivity).getSettingValueString(BusTrackerApplication.getInstance().getString(R.string.key_map_theme))
+
+    private var routingMapFragment: RoutingMapFragment? = null
+    private var searchDialogFragment: SearchDialogFragment? = null
+    private var userStatusFragment: UserStatusFragment? = null
+
+    private lateinit var myLocation: Location
+
     private var polyLines = arrayListOf<Polyline>()
     private var clickedMarker: Marker? = null
 
+    private var polyLinesDirection1 = arrayListOf<Polyline>()
+
     private var mService: LocationService? = null
     private var mBound = false
+
+//    private lateinit var client: ActivityRecognitionClient
+
     private val mServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(p0: ComponentName?, p1: IBinder?) {
             val binder = p1 as LocationService.LocalBinder
             mService = binder.service
             mBound = true
+            if (BusTrackerApplication.intelligentTracker.value.toBoolean() && !Common.requestingLocationUpdates(this@MapsActivity)) {
+                mService?.requestLocationUpdates()
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -76,91 +100,188 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
         }
     }
 
-    @Suppress("unused")
-    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
-    fun onBackgroundLocationRetrieve(event: BackgroundLocation) {
-        Toast.makeText(this@MapsActivity, Common.getLocationText(event.location), Toast.LENGTH_SHORT).show()
-        myLocation = event.location
-        if (BusTrackerApplication.focusOnCenter.toBoolean()) {
-            moveCamera(event.location)
+    companion object {
+        private const val TAG = "MapsActivity"
+    }
+
+    private fun processCurrentUser(user: User) {
+        val latLngLocation = LatLng(user.latitude, user.longitude)
+
+        /** Get closest station for new location */
+        if (!this::closestStation.isInitialized) {
+            closestStation = GeneralUtils.getClosestStation(latLngLocation)
         }
+        updateClosestStationTextView(latLngLocation, closestStation.name)
+
+        /** Update/Create marker */
+        currentUserMarker?.let {
+            MapUtils.animateMarker(it, LatLng(user.latitude, user.longitude), mMap.projection)
+        } ?: run {
+            if (Common.requestingLocationUpdates(this@MapsActivity)) {
+                val markerId: Int = MapUtils.getMarkerIdForCurrentUser()
+                currentUserMarker = mMap.addMarker(
+                    MarkerOptions()
+                        .position(LatLng(user.latitude, user.longitude))
+                        .title("You")
+                        .snippet("Your ID is: ${user.id}")
+                        .icon(MapUtils.bitmapFromVector(this@MapsActivity, markerId))
+                )
+                MapUtils.moveCameraToLocation(mMap, LatLng(user.latitude, user.longitude))
+                text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, closestStation.name)
+            }
+        }
+
+        if (BusTrackerApplication.focusOnCenter.toBoolean()) {
+            MapUtils.moveCameraToLocation(mMap, latLngLocation)
+        }
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    fun onUserDataRetrieve(event: User) {
+        Log.i(TAG, "onUserDataRetrieve: ${event.id} - ${event.latitude} / ${event.longitude}")
+        currentUser.value = event
+    }
+
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    fun onBackgroundDBDataRetrieve(users: MutableList<User>) {
+        Log.i(TAG, "onBackgroundDBDataRetrieve: received ${users.size} updated users")
+        usersList.value = users
+    }
+
+    private fun updateClosestStationTextView(location: LatLng, closestStationName: String) {
+        val closestStationNew = GeneralUtils.getClosestStation(location)
+        if (closestStationName != closestStationNew.name) {
+            text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, closestStationNew.name)
+        }
+    }
+
+//    private fun requestActivityUpdates() {
+//        client.requestActivityTransitionUpdates(
+//            IntelligentTrackerUtils.getActivityTransitionRequest(), getPendingIntent()
+//        ).addOnSuccessListener {
+//            Log.i(TAG, "requestActivityUpdates: Success")
+//        }.addOnFailureListener {
+//            Log.i(TAG, "requestActivityUpdates: Failure")
+//        }
+//    }
+
+//    private fun getPendingIntent(): PendingIntent {
+//        val intent = Intent(this, ActivityTransitionReceiver::class.java)
+//        return PendingIntent.getBroadcast(this, Constants.REQUEST_CODE_INTENT_ACTIVITY_TRANSITION, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+//    }
+
+//    private fun removeActivityUpdates() {
+//        client.removeActivityUpdates(getPendingIntent())
+//    }
+
+    /**
+     * When status is updated from
+     * UserStatusFragment.
+     */
+    override fun onStatusChange(status: UserStatus) {
+        Log.i(TAG, "onStatusChange: $status")
+        val menu = bottom_navigation_view.menu
+        if (status.tracking) {
+            if (Common.requestingLocationUpdates(this@MapsActivity)) {
+                Toast.makeText(this@MapsActivity, "The application is already tracking your location", Toast.LENGTH_SHORT).show()
+                menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_on)
+            } else {
+                mService?.let {
+                    it.requestLocationUpdates()
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_on)
+                }
+            }
+        } else if (!status.tracking) {
+            if (Common.requestingLocationUpdates(this@MapsActivity)) {
+                mService?.let {
+                    it.removeLocationUpdates()
+                    currentUserMarker?.remove()
+                    currentUserMarker = null
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_off)
+                }
+            } else {
+                Toast.makeText(this@MapsActivity, "The application wasn't tracking your location", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+//        removeActivityUpdates()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
+
+//        client = ActivityRecognition.getClient(this)
+//        requestActivityUpdates()
+
+        text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, "Not found")
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
 
         mapFragment.getMapAsync(this@MapsActivity)
 
-        // get list of permissions
-        val permissions = GeneralUtils.getPermissionList()
+        val menu = bottom_navigation_view.menu
 
-        Dexter.withContext(applicationContext)
-            .withPermissions(permissions)
-            .withListener(object : MultiplePermissionsListener {
-                override fun onPermissionsChecked(p0: MultiplePermissionsReport?) {
-                    request_location_updates_button.setOnClickListener {
-                        mService!!.requestLocationUpdates()
-                    }
-                    remove_location_updates_button.setOnClickListener {
-                        mService!!.removeLocationUpdates()
-                    }
-
-                    setButtonState(Common.requestingLocationUpdates(this@MapsActivity))
-                    bindService(Intent(this@MapsActivity, LocationService::class.java), mServiceConnection, Context.BIND_AUTO_CREATE)
+        BusTrackerApplication.status.observe(this@MapsActivity, { currentStatus ->
+            if (BusTrackerApplication.intelligentTracker.value.toBoolean()) {
+                if (currentStatus == Status.ON_BUS) {
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_bus_station_white)
+                } else {
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_user_standing_white)
                 }
-
-                override fun onPermissionRationaleShouldBeShown(p0: MutableList<PermissionRequest>?, p1: PermissionToken?) {
-                    // Not implemented
-                }
-            }).check()
-    }
-
-    override fun onStart() {
-        super.onStart()
-        PreferenceManager.getDefaultSharedPreferences(this)
-            .registerOnSharedPreferenceChangeListener(this)
-        EventBus.getDefault().register(this)
-    }
-
-    override fun onStop() {
-        PreferenceManager.getDefaultSharedPreferences(this)
-            .unregisterOnSharedPreferenceChangeListener(this)
-        EventBus.getDefault().unregister(this)
-        super.onStop()
-        unbindService(mServiceConnection)
-    }
-
-    /**
-     * Listens for changes in preferences.
-     */
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        when (key) {
-            Common.KEY_REQUEST_LOCATION_UPDATE -> {
-                setButtonState(sharedPreferences!!.getBoolean(Common.KEY_REQUEST_LOCATION_UPDATE, false))
             }
-        }
-    }
+        })
 
-    private fun setButtonState(boolean: Boolean) {
-        if (boolean) {
-            remove_location_updates_button.isEnabled = true
-            request_location_updates_button.isEnabled = false
-        } else {
-            remove_location_updates_button.isEnabled = false
-            request_location_updates_button.isEnabled = true
-        }
-    }
+        BusTrackerApplication.intelligentTracker.observe(this@MapsActivity, { intelligentTracker ->
+            if (intelligentTracker.toBoolean()) {
+                menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_user_standing_white)
+                if (!Common.requestingLocationUpdates(this@MapsActivity)) {
+                    mService?.requestLocationUpdates()
+                }
+            } else {
+                if (Common.requestingLocationUpdates(this@MapsActivity)) {
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_on)
+                } else {
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_off)
+                }
+            }
+        })
 
-    /**
-     * Moves the camera to the given location.
-     */
-    private fun moveCamera(location: Location) {
-        val newLocation = LatLng(location.latitude, location.longitude)
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation))
+        bottom_navigation_view.setOnNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                /** Search for a station, opens SearchDialog Fragment */
+                R.id.nav_search -> {
+                    searchDialogFragment = SearchDialogFragment()
+                    searchDialogFragment?.let {
+                        it.show(supportFragmentManager, "SearchForStation")
+                    }
+                }
+                /** Toggle location tracking */
+                R.id.nav_status -> {
+                    if (BusTrackerApplication.intelligentTracker.value.toBoolean()) {
+                        if (!Common.requestingLocationUpdates(this@MapsActivity)) {
+                            mService?.requestLocationUpdates()
+                            menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_user_standing_white)
+                        } else {
+                            Toast.makeText(this@MapsActivity, "Intelligent tracker is currently managing your location data.", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        userStatusFragment = UserStatusFragment(this)
+                        userStatusFragment?.let {
+                            it.show(supportFragmentManager, "UserStatusFragment")
+                        }
+                    }
+                }
+                /** Access settings by launching Settings Activity */
+                R.id.nav_settings -> startActivity(Intent(this@MapsActivity, SettingsActivity::class.java))
+            }
+            true
+        }
     }
 
     /**
@@ -174,50 +295,211 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this@MapsActivity, resources.getIdentifier(BusTrackerApplication.mapTheme, "raw", this.packageName)))
+        MapUtils.setupMap(mMap, this@MapsActivity, BusTrackerApplication.mapTheme.value!!)
+
+        /**
+         * Center map to user's current location
+         * if it's been set.
+         */
+        currentUser.value?.let {
+            if (it.latitude > 0 && it.longitude > 0) {
+                MapUtils.moveCameraToLocation(mMap, LatLng(it.latitude, it.longitude))
+            }
+        }
+
+        /**
+         * Observe Map Theme changes and if color styles
+         * differ then change the icons of the markers.
+         */
+        BusTrackerApplication.mapTheme.observe(this@MapsActivity, { themeString ->
+            if (MapUtils.mapThemeChangeNeeded(themeString, latestMapTheme)) {
+                latestMapTheme = themeString
+                mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this@MapsActivity, resources.getIdentifier(themeString, "raw", packageName)))
+                stationMarkers?.let {
+                    MapUtils.updateStationMarkersColor(it, this@MapsActivity)
+                }
+                usersMarkers?.let {
+                    MapUtils.updateUserMarkersColor(it, this@MapsActivity)
+                }
+                currentUserMarker?.let {
+                    MapUtils.updateCurrentUserMarkerColor(it, this@MapsActivity)
+                }
+            }
+        })
+
+        /**
+         * Observe current user's location changes.
+         */
+        currentUser.observe(this@MapsActivity, {
+            processCurrentUser(it)
+        })
+
+        /**
+         * Observe active users.
+         */
+        usersList.observe(this@MapsActivity, { users ->
+            // Filter out users that have bus as "0"
+            // meaning they are waiting for a bus.
+            val filteredUsers = users.filter { x -> x.bus != 0 }
+
+            usersMarkers?.let {
+                val currentUserId = currentUser.value?.id ?: ""
+                MapUtils.updateUsersMarkers(filteredUsers, it, currentUserId, mMap, this@MapsActivity)
+            } ?: run {
+                usersMarkers = MapUtils.createAndAddUsersMarkers(filteredUsers, this@MapsActivity, mMap)
+            }
+        })
 
         val scope = CoroutineScope(Dispatchers.Default)
         val jobCreateMarkers: Deferred<List<MarkerOptions>> = scope.async { MapUtils.createStationsMarkers(BusTrackerApplication.stations, applicationContext) }
 
-        mMap.setOnMapClickListener { clickedLocation ->
-            val closestStation = MapUtils.getClosestStation(clickedLocation)
-            closestStation?.let {
-                findRoutes(clickedLocation, LatLng(closestStation.latitude, closestStation.longitude))
-                Toast.makeText(this@MapsActivity, "Found closest station: ${closestStation.name}", Toast.LENGTH_SHORT).show()
+        if (this::myLocation.isInitialized) {
+            mMap.setOnMapClickListener(null)
+        } else {
+            if (this::chosenStation.isInitialized) {
+                mMap.setOnMapClickListener(this@MapsActivity)
+            } else {
+//                Toast.makeText(this@MapsActivity, "Please choose a station from search first.", Toast.LENGTH_SHORT).show()
             }
         }
-
-        mMap.setMaxZoomPreference(20F)
-        mMap.setMinZoomPreference(15F)
-        val tgMuresDefault = LatLng(46.539892, 24.558334)
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(tgMuresDefault))
 
         // Get results from async methods
         runBlocking {
             stationMarkers = try {
-                jobCreateMarkers.await()
+                MapUtils.addStationMarkers(mMap, jobCreateMarkers.await())
             } catch (ex: Exception) {
                 ArrayList()
             }
-            MapUtils.addStationMarkers(mMap, stationMarkers)
         }
     }
 
     /**
-     * Method to find the route.
+     * Listener for selected location on map
+     * to be used as current location.
      */
-    private fun findRoutes(start: LatLng?, end: LatLng?) {
-        if (start == null || end == null) {
-            Toast.makeText(this@MapsActivity, "Unable to get location", Toast.LENGTH_LONG).show()
+    override fun onMapClick(position: LatLng) {
+        Toast.makeText(this@MapsActivity, "Current location updated.", Toast.LENGTH_SHORT).show()
+        val customLocation = Location(LocationManager.GPS_PROVIDER)
+        customLocation.latitude = position.latitude
+        customLocation.longitude = position.longitude
+
+//        currentUserLocation.value = customLocation
+        currentUser.value?.latitude = customLocation.latitude
+        currentUser.value?.longitude = customLocation.longitude
+
+        closestStation = GeneralUtils.getClosestStation(position)
+        text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, closestStation.name)
+        initializeRouting(chosenStation)
+    }
+
+    /**
+     * Listener for selected station
+     * in station search dialog.
+     */
+    override fun searchedForStation(station: Station) {
+        chosenStation = station
+        searchDialogFragment?.let {
+            supportFragmentManager.beginTransaction().remove(it).commit()
+        }
+        searchDialogFragment = null
+
+        if (this::myLocation.isInitialized) {
+            initializeRouting(chosenStation)
         } else {
-            val routing = Routing.Builder()
-                .travelMode(AbstractRouting.TravelMode.WALKING)
-                .withListener(this@MapsActivity)
-                .alternativeRoutes(true)
-                .waypoints(start, end)
-                .key(getString(R.string.google_maps_key))
-                .build()
-            routing.execute()
+            Toast.makeText(this@MapsActivity, "Current location unknown, please wait for service location data.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun initializeRouting(station: Station) {
+        val busesWithNumber: IntArray = GeneralUtils.getBusNumbersWithGivenStation(station.name)
+        if (busesWithNumber.isNotEmpty()) {
+            routingMapFragment = RoutingMapFragment()
+            routingMapFragment?.let {
+                val bundle = Bundle()
+                bundle.putIntArray("buses_with_number", busesWithNumber)
+                bundle.putString("station_name", station.name)
+                bundle.putParcelable("current_latlng", LatLng(myLocation.latitude, myLocation.longitude))
+                it.arguments = bundle
+                it.show(supportFragmentManager, "Routing")
+            }
+            Log.i(TAG, "initializeRouting: Searched for station: ${station.name}, found ${busesWithNumber.size} buses")
+        } else {
+            Toast.makeText(this@MapsActivity, "Couldn't find any bus with ${station.name} in their route.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+        if (!mBound) {
+            bindService(Intent(this@MapsActivity, LocationService::class.java), mServiceConnection, Context.BIND_AUTO_CREATE)
+            mBound = true
+        }
+
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .registerOnSharedPreferenceChangeListener(this)
+        EventBus.getDefault().register(this)
+    }
+
+    override fun onStop() {
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .unregisterOnSharedPreferenceChangeListener(this)
+        EventBus.getDefault().unregister(this)
+        super.onStop()
+        if (mBound) {
+            unbindService(mServiceConnection)
+            mBound = false
+        }
+    }
+
+    /**
+     * Listens for changes in preferences.
+     */
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        val menu = bottom_navigation_view.menu
+        when (key) {
+            Common.KEY_REQUEST_LOCATION_UPDATE -> {
+                if (sharedPreferences!!.getBoolean(Common.KEY_REQUEST_LOCATION_UPDATE, false)) {
+                    if (BusTrackerApplication.intelligentTracker.value.toBoolean()) {
+                        menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_user_standing_white)
+                    } else {
+                        menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_on)
+                    }
+                } else {
+                    menu.findItem(R.id.nav_status).setIcon(R.drawable.ic_location_white_off)
+                }
+            }
+        }
+    }
+
+    private var routingListenerToStation: RoutingListener = object : RoutingListener {
+
+        override fun onRoutingFailure(ex: RouteException?) {
+            Log.e(TAG, "onRoutingFailure: Routing failed. More details: ${ex?.message}")
+        }
+
+        override fun onRoutingStart() {
+            Log.i(TAG, "onRoutingStart: Finding Route")
+        }
+
+        override fun onRoutingSuccess(route: java.util.ArrayList<Route>, shortestRouteIndex: Int) {
+            polyLinesDirection1 = ArrayList()
+            val polyOptions = PolylineOptions()
+            //add route(s) to the map using polyline
+            for (i in 0 until route.size) {
+                if (i == shortestRouteIndex) {
+                    polyOptions.color(ContextCompat.getColor(this@MapsActivity, R.color.dark_orange))
+                    polyOptions.width(7f)
+                    polyOptions.addAll(route[shortestRouteIndex].points)
+                    val polyline = mMap.addPolyline(polyOptions)
+                    polyLinesDirection1.add(polyline)
+                } else {
+                }
+            }
+        }
+
+        override fun onRoutingCancelled() {
+            Log.w(TAG, "onRoutingCancelled: Routing cancelled")
         }
     }
 
@@ -257,17 +539,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
     }
 
     //Routing call back functions.
-    override fun onRoutingFailure(e: RouteException) {
-        val parentLayout: View = findViewById(android.R.id.content)
-        val snackbar = Snackbar.make(parentLayout, e.toString(), Snackbar.LENGTH_LONG)
-        snackbar.show()
+    override fun onRoutingFailure(ex: RouteException) {
+        Log.e(TAG, "onRoutingFailure: Routing failed. More details: ${ex.message}")
+//        val parentLayout: View = findViewById(android.R.id.content)
+//        val snackbar = Snackbar.make(parentLayout, e.toString(), Snackbar.LENGTH_SHORT)
+//        snackbar.show()
     }
 
     override fun onRoutingStart() {
-        Toast.makeText(this@MapsActivity, "Finding Route...", Toast.LENGTH_LONG).show()
+        Log.i(TAG, "onRoutingStart: Finding Route")
     }
 
     override fun onRoutingCancelled() {
-        Toast.makeText(this@MapsActivity, "Routing cancelled", Toast.LENGTH_LONG).show()
+        Log.w(TAG, "onRoutingCancelled: Routing cancelled")
     }
 }

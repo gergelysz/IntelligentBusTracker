@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/popup_style"
+    android:orientation="vertical"
+    android:padding="20dp"
+    tools:context=".fragment.UserStatusFragment">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/please_select_whether_you_want_your_location_to_be_tracked_or_not"
+        android:textAlignment="center"
+        android:textColor="@color/white_smoke"
+        android:textSize="20sp"
+        android:theme="@style/FontGlobalRegular" />
+
+    <RadioGroup
+        android:id="@+id/radio_group_location_tracking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/radio_button_location_tracking_yes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:buttonTint="@color/white"
+            android:text="@string/yes"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+        <RadioButton
+            android:id="@+id/radio_button_location_tracking_no"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:buttonTint="@color/white"
+            android:text="@string/no"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/text_view_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/please_select_your_current_status"
+        android:textAlignment="center"
+        android:textColor="@color/white_smoke"
+        android:textSize="20sp"
+        android:theme="@style/FontGlobalRegular" />
+
+    <RadioGroup
+        android:id="@+id/radio_group_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/radio_button_waiting_for_bus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:buttonTint="@color/white"
+            android:text="@string/waiting_for_bus"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+        <RadioButton
+            android:id="@+id/radio_button_on_bus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:buttonTint="@color/white"
+            android:text="@string/on_bus"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+    </RadioGroup>
+
+    <Spinner
+        android:id="@+id/spinner_user_status_bus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:spinnerMode="dialog" />
+
+    <TextView
+        android:id="@+id/text_view_direction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/please_select_direction_for_bus_44"
+        android:textAlignment="center"
+        android:textColor="@color/white_smoke"
+        android:textSize="20sp"
+        android:theme="@style/FontGlobalRegular" />
+
+    <RadioGroup
+        android:id="@+id/radio_group_direction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/radio_button_direction1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="2dp"
+            android:buttonTint="@color/white"
+            android:text="@string/direction1"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+        <RadioButton
+            android:id="@+id/radio_button_direction2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="2dp"
+            android:buttonTint="@color/white"
+            android:text="@string/direction2"
+            android:textColor="@color/white_smoke"
+            android:textSize="16sp"
+            android:theme="@style/FontGlobalRegular" />
+
+    </RadioGroup>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/linear_layout_user_status_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/button_user_status_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/button_style"
+            android:text="@string/save"
+            android:theme="@style/FontGlobalBold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toLeftOf="@id/button_user_status_cancel"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Button
+            android:id="@+id/button_user_status_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/button_style"
+            android:text="@string/cancel"
+            android:theme="@style/FontGlobalBold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toRightOf="@id/button_user_status_save"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</LinearLayout>

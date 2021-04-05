@@ -10,13 +10,15 @@ import com.example.intelligentbustracker.fragment.SettingsFragment
 import kotlinx.android.synthetic.main.activity_settings.*
 
 class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
         if (settings_frame_layout != null) {
-            if (savedInstanceState != null)
+            if (savedInstanceState != null) {
                 return
+            }
             supportFragmentManager.beginTransaction()
                 .add(R.id.settings_frame_layout, SettingsFragment())
                 .commit()
@@ -50,7 +52,10 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
                 BusTrackerApplication.focusOnCenter = sharedPreferences!!.getBoolean(key, false).toString()
             }
             "key_map_theme" -> {
-                BusTrackerApplication.mapTheme = sharedPreferences!!.getString(key, "map_style_retro") ?: "map_style_retro"
+                BusTrackerApplication.mapTheme.value = sharedPreferences!!.getString(key, "map_style_retro") ?: "map_style_retro"
+            }
+            "key_intelligent_bus_track" -> {
+                BusTrackerApplication.intelligentTracker.value = sharedPreferences!!.getBoolean(key, true).toString()
             }
         }
     }
