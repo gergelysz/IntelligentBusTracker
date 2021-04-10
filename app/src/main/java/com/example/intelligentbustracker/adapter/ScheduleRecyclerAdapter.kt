@@ -45,7 +45,7 @@ class ScheduleRecyclerAdapter(private val listener: OnScheduleItemClickListener)
         fun bind(schedule: Schedule) {
             scheduleBusNumber.text = "${schedule.busNumber}"
             scheduleBusTitle.text = "${schedule.leavingHours1.fromStation} - ${schedule.leavingHours2.fromStation}"
-            when (GeneralUtils.getDay()) {
+            when (GeneralUtils.getTodayDayType()) {
                 Calendar.SATURDAY -> {
                     scheduleBusDetails.text = schedule.leavingHours1.saturdayLeavingHours.joinToString(" ")
                 }

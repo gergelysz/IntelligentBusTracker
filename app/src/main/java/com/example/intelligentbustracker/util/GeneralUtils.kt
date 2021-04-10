@@ -15,7 +15,10 @@ import com.example.intelligentbustracker.model.LeavingHours
 import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
 import com.google.android.gms.maps.model.LatLng
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.pow
@@ -25,6 +28,8 @@ import kotlin.math.sqrt
 class GeneralUtils {
 
     companion object {
+
+        private const val NOT_FOUND = "NOT FOUND"
 
         /**
          * Returns a given number of stations with a given maximum
@@ -42,7 +47,11 @@ class GeneralUtils {
             }
         }
 
-        fun calculateDistanceToStationsWithMaxDistance(currentLatLng: LatLng, stations: List<Station>, maxDistance: Double): Map<Station, Double> {
+        /**
+         * Calculates the distance to each station given from the current LatLng
+         * with a possible max value set in parameter 'maxDistance'.
+         */
+        private fun calculateDistanceToStationsWithMaxDistance(currentLatLng: LatLng, stations: List<Station>, maxDistance: Double): Map<Station, Double> {
             val map = HashMap<Station, Double>()
             for (station in stations) {
                 val distanceHaversineLocation = getDistance(currentLatLng.latitude, currentLatLng.longitude, station.latitude, station.longitude)
@@ -66,6 +75,10 @@ class GeneralUtils {
             return closestStation
         }
 
+        /**
+         * Returns the closest Station object to
+         * the given LatLng location parameter.
+         */
         fun getClosestStation(currentLatLng: LatLng): Station {
             var smallestDistance: Double = getDistance(currentLatLng.latitude, currentLatLng.longitude, BusTrackerApplication.stations[0].latitude, BusTrackerApplication.stations[0].longitude)
             var closestStation: Station = BusTrackerApplication.stations[0]
@@ -79,6 +92,10 @@ class GeneralUtils {
             return closestStation
         }
 
+        /**
+         * Calculates the distance between two points
+         * based on the Haversine formula.
+         */
         private fun getDistance(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double): Double {
             // The math module contains a function
             // named toRadians which converts from
@@ -102,45 +119,109 @@ class GeneralUtils {
             return c * r
         }
 
-        fun getEarliestLeaveTimeForBusTowardsStation(bus: Bus, stationName: String): LeavingHour? {
-            val currentTime: String = getHourAndMinuteString()
-            if (bus.scheduleRoutes.scheduleRoute1.contains(stationName) && bus.scheduleRoutes.scheduleRoute1.indexOf(stationName) > 0) {
-                val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == bus.number }
-                matchingSchedule?.let { schedule ->
-                    val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours1, currentTime)
-                    return LeavingHour(schedule.leavingHours1.fromStation, leavingHour)
+        fun getEarliestNLeaveTimesForBusTowardsStation(busNumber: Int, stationName: String, numberOfLeaveTimes: Int): List<LeavingHour> {
+            val bus = BusTrackerApplication.buses.firstOrNull { x -> x.number == busNumber }
+            val leaveTimes = ArrayList<LeavingHour>()
+            bus?.let {
+                var currentTime: String = getHourAndMinuteString()
+                if (it.scheduleRoutes.scheduleRoute1.contains(stationName) && it.scheduleRoutes.scheduleRoute1.indexOf(stationName) > 0) {
+                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
+                    matchingSchedule?.let { schedule ->
+                        repeat(numberOfLeaveTimes) {
+                            val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours1, currentTime)
+                            currentTime = leavingHour
+                            leaveTimes.add(LeavingHour(schedule.leavingHours1.fromStation, leavingHour))
+                        }
+                    }
+                } else if (it.scheduleRoutes.scheduleRoute2.contains(stationName) && it.scheduleRoutes.scheduleRoute2.indexOf(stationName) > 0) {
+                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
+                    matchingSchedule?.let { schedule ->
+                        repeat(numberOfLeaveTimes) {
+                            val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours2, currentTime)
+                            currentTime = leavingHour
+                            leaveTimes.add(LeavingHour(schedule.leavingHours2.fromStation, leavingHour))
+                        }
+                    }
                 }
-            } else if (bus.scheduleRoutes.scheduleRoute2.contains(stationName) && bus.scheduleRoutes.scheduleRoute2.indexOf(stationName) > 0) {
-                val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == bus.number }
-                matchingSchedule?.let { schedule ->
-                    val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours2, currentTime)
-                    return LeavingHour(schedule.leavingHours2.fromStation, leavingHour)
+                return leaveTimes
+            }
+            return leaveTimes
+        }
+
+        fun getEarliestLeaveTimeForBusTowardsStation(busNumber: Int, stationName: String): LeavingHour? {
+            val bus = BusTrackerApplication.buses.firstOrNull { x -> x.number == busNumber }
+            bus?.let {
+                val currentTime: String = getHourAndMinuteString()
+                if (it.scheduleRoutes.scheduleRoute1.contains(stationName) && it.scheduleRoutes.scheduleRoute1.indexOf(stationName) > 0) {
+                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
+                    matchingSchedule?.let { schedule ->
+                        val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours1, currentTime)
+                        return LeavingHour(schedule.leavingHours1.fromStation, leavingHour)
+                    }
+                } else if (it.scheduleRoutes.scheduleRoute2.contains(stationName) && it.scheduleRoutes.scheduleRoute2.indexOf(stationName) > 0) {
+                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
+                    matchingSchedule?.let { schedule ->
+                        val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours2, currentTime)
+                        return LeavingHour(schedule.leavingHours2.fromStation, leavingHour)
+                    }
                 }
+                return null
             }
             return null
         }
 
+        /**
+         * Return the earliest leaving hour from the getEarliestLeavingHour method
+         * @see getEarliestLeavingHour
+         * based on the type of the current day. If not found then returns
+         * the first leaving hour of tomorrow based on the type of the day it'll be.
+         */
         private fun returnEarliestLeavingHourForSchedule(leavingHours: LeavingHours, currentTime: String): String {
-            return when (getDay()) {
+            val time: String
+            when (getTodayDayType()) {
                 Calendar.SATURDAY -> {
-                    getEarliestLeavingHour(leavingHours.saturdayLeavingHours, currentTime)
+                    time = getEarliestLeavingHour(leavingHours.saturdayLeavingHours, currentTime)
+                    return if (time == NOT_FOUND) {
+                        leavingHours.sundayLeavingHours[0]
+                    } else {
+                        time
+                    }
                 }
                 Calendar.SUNDAY -> {
-                    getEarliestLeavingHour(leavingHours.sundayLeavingHours, currentTime)
+                    time = getEarliestLeavingHour(leavingHours.sundayLeavingHours, currentTime)
+                    return if (time == NOT_FOUND) {
+                        leavingHours.weekdayLeavingHours[0]
+                    } else {
+                        time
+                    }
                 }
                 else -> {
-                    getEarliestLeavingHour(leavingHours.weekdayLeavingHours, currentTime)
+                    time = getEarliestLeavingHour(leavingHours.weekdayLeavingHours, currentTime)
+                    return if (time == NOT_FOUND) {
+                        // check if tomorrow is Saturday
+                        if (getTomorrowDayType() == Calendar.SATURDAY) {
+                            leavingHours.saturdayLeavingHours[0]
+                        } else {
+                            leavingHours.weekdayLeavingHours[0]
+                        }
+                    } else {
+                        time
+                    }
                 }
             }
         }
 
+        /**
+         * Returns the earliest leaving hour based on a list containing the hours
+         * and minutes and the current time. If no match then return "NOT_FOUND".
+         */
         private fun getEarliestLeavingHour(leavingHours: List<String>, currentTime: String): String {
             for (leavingHour in leavingHours) {
                 if (currentTime < leavingHour) {
                     return leavingHour
                 }
             }
-            return "Couldn't find closest schedule time"
+            return NOT_FOUND
         }
 
         fun getBusesWithDirectionForStation(stationName: String, buses: List<Bus>): Map<Bus, Direction> {
@@ -154,36 +235,14 @@ class GeneralUtils {
             return listOfBusesWithGivenStation
         }
 
-        // TODO: Finish
-        fun getBusesWithDirectionForStations(stations: List<Station>, buses: List<Bus>): Map<Bus, Direction> {
-            val listOfBusesWithGivenStation: MutableMap<Bus, Direction> = HashMap()
-            for (bus in buses) {
-                for (station in stations) {
-                    if (bus.containsStation(station.name)) {
-                        //                val direction: Direction? = bus.getDirectionForStation(stationName)
-//                direction?.let {
-//                    listOfBusesWithGivenStation.put(bus, direction)
-//                }
-                    }
-                }
-            }
-            return listOfBusesWithGivenStation
-        }
-
+        /**
+         * Returns a list of Bus objects containing any of
+         * the stations listed in the 'stations' parameter.
+         */
         fun getBusesWithGivenStations(stations: List<Station>): List<Bus> {
             val listOfBusesWithGivenStation = ArrayList<Bus>()
             for (bus in BusTrackerApplication.buses) {
                 if (stations.any { x -> bus.containsStation(x.name) }) {
-                    listOfBusesWithGivenStation.add(bus)
-                }
-            }
-            return listOfBusesWithGivenStation
-        }
-
-        fun getBusesWithGivenStation(stationName: String): List<Bus> {
-            val listOfBusesWithGivenStation = ArrayList<Bus>()
-            for (bus in BusTrackerApplication.buses) {
-                if (bus.containsStation(stationName)) {
                     listOfBusesWithGivenStation.add(bus)
                 }
             }
@@ -251,41 +310,33 @@ class GeneralUtils {
             return permissions
         }
 
-        fun getDay(): Int {
+        fun getTodayDayType(): Int {
             val calendar: Calendar = Calendar.getInstance()
             return calendar.get(Calendar.DAY_OF_WEEK)
         }
 
+        fun getTomorrowDayType(): Int {
+            val calendar: Calendar = Calendar.getInstance()
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            return calendar.get(Calendar.DAY_OF_WEEK)
+        }
+
+        /**
+         * Returns the current time
+         * in 24 hour format.
+         */
         private fun getHourAndMinuteString(): String {
-            val hourString = getHour().toString().let {
-                if (it.length == 1) {
-                    "0$it"
-                } else {
-                    it
-                }
-            }
-            val minuteString: String = getMinute().toString().let {
-                if (it.length == 1) {
-                    "0$it"
-                } else {
-                    it
-                }
-            }
-            return "$hourString:$minuteString"
+            val pattern = "HH:mm"
+            val simpleDateFormat = SimpleDateFormat(pattern, Locale.getDefault())
+            return simpleDateFormat.format(Date())
         }
 
-        private fun getHour(): Int {
-            val calendar: Calendar = Calendar.getInstance()
-            return calendar.get(Calendar.HOUR_OF_DAY)
-        }
-
-        private fun getMinute(): Int {
-            val calendar: Calendar = Calendar.getInstance()
-            return calendar.get(Calendar.MINUTE)
-        }
-
+        /**
+         * Creates and returns a list of Station
+         * objects from given list of their names.
+         */
         fun generateStationListFromStationNames(stations: List<Station>, stationNames: List<String>): List<Station> {
-            val generatedStations: MutableList<Station> = ArrayList()
+            val generatedStations = ArrayList<Station>()
             for (stationName in stationNames) {
                 val station = stations.firstOrNull { x -> x.name == stationName }
                 station?.let {
@@ -306,6 +357,10 @@ class GeneralUtils {
             return generatedBuses
         }
 
+        /**
+         * Returns the schedule for a bus with
+         * it's number passed as parameter.
+         */
         fun getScheduleFromBusNumber(busNumber: Int, schedules: List<Schedule>): Schedule? {
             return schedules.firstOrNull { x -> x.busNumber == busNumber }
         }

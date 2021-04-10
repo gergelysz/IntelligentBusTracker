@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-
     <PreferenceCategory android:title="Location">
-
         <ListPreference
             android:defaultValue="@string/location_update_interval_default"
             android:dialogTitle="@string/location_update_interval"
@@ -25,15 +23,17 @@
             android:defaultValue="@string/focus_map_center_default"
             android:key="@string/key_focus_map_center_on_current_location"
             android:title="@string/title_focus_map_center_on_current_location" />
+    </PreferenceCategory>
 
+    <PreferenceCategory android:title="Intelligent Tracker">
         <SwitchPreference
             android:defaultValue="@string/intelligent_bus_track_default"
             android:key="@string/key_intelligent_bus_track"
             android:title="@string/title_intelligent_bus_track" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Interface">
 
+    <PreferenceCategory android:title="Interface">
         <ListPreference
             android:defaultValue="@string/map_theme_default"
             android:dialogTitle="@string/map_theme"
@@ -43,5 +43,10 @@
             android:summary="@string/summary_map_theme"
             android:title="@string/title_map_theme" />
 
+        <SwitchPreference
+            android:defaultValue="@string/ask_location_change_default"
+            android:key="@string/key_ask_location_change"
+            android:summary="@string/summary_ask_location_change"
+            android:title="@string/title_ask_location_change" />
     </PreferenceCategory>
 </PreferenceScreen>

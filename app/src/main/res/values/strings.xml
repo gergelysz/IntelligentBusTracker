@@ -79,13 +79,21 @@
         <item>map_style_night</item>
         <item>map_style_dark</item>
     </string-array>
+
+    <!-- Ask to change location before routing when location is not tracked -->
+    <string name="key_ask_location_change">key_ask_location_change</string>
+    <string name="title_ask_location_change">Ask for location change before routing</string>
+    <string name="summary_ask_location_change">Ask to change current location on the map before getting a route to a selected location when user\'s current location is not being tracked</string>
+    <string name="ask_location_change_default">true</string>
+
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="closest_station">Closest station: %s</string>
     <string name="text_bus_number">44</string>
     <string name="custom_location_setup_yes_button_text">Yes</string>
     <string name="custom_location_setup_no_button_text">No</string>
-    <string name="custom_location_setup_text_view_text">Your current location in unknown. Do you want to choose a custom location from the map as your current location?</string>
+    <string name="custom_location_setup_text_view_text">Do you want to select a new location on the map as your current location?</string>
     <string name="application_logo">Application Logo</string>
     <string name="please_select_your_current_status">Please select your current status:</string>
     <string name="waiting_for_bus">Waiting for bus</string>
@@ -98,4 +106,5 @@
     <string name="please_select_direction_for_bus_44">Please select direction for bus: 44</string>
     <string name="direction1">Direction1</string>
     <string name="direction2">Direction2</string>
+    <string name="tap_on_the_map_to_choose_your_current_location">Tap on the map to choose your current location:</string>
 </resources>

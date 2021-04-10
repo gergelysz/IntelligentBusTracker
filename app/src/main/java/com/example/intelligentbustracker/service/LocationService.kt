@@ -335,10 +335,13 @@ class LocationService : Service() {
             removeUpdatesTask.addOnSuccessListener {
                 running = false
                 Common.setRequestingLocationUpdates(this, false)
-                currentUserDocumentReference?.delete()
-                currentUserDocumentReference = null
-                currentUser = null
-                stopSelf()
+                currentUserDocumentReference?.delete()?.addOnSuccessListener {
+                    currentUserDocumentReference = null
+                    currentUser = null
+                    stopSelf()
+                }?.addOnFailureListener {
+                    Toast.makeText(this@LocationService, "Failed to remove user reference from Firestore.", Toast.LENGTH_LONG).show()
+                }
             }.addOnFailureListener {
                 Toast.makeText(this@LocationService, "Failed to remove location updates.", Toast.LENGTH_LONG).show()
             }
@@ -389,13 +392,16 @@ class LocationService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         // Delete current user data
         if (!Common.requestingLocationUpdates(this)) {
-            val removeUpdatesTask = fusedLocationProviderClient!!.removeLocationUpdates(locationCallback!!)
-            removeUpdatesTask.addOnSuccessListener {
-                currentUserDocumentReference?.delete()
-                stopSelf()
-                super.onTaskRemoved(rootIntent)
-            }.addOnFailureListener {
-                Toast.makeText(this@LocationService, "Failed to remove location updates.", Toast.LENGTH_LONG).show()
+            if (running) {
+                val removeUpdatesTask = fusedLocationProviderClient!!.removeLocationUpdates(locationCallback!!)
+                removeUpdatesTask.addOnSuccessListener {
+                    currentUserDocumentReference?.delete()
+                    running = false
+                    stopSelf()
+                    super.onTaskRemoved(rootIntent)
+                }.addOnFailureListener {
+                    Toast.makeText(this@LocationService, "Failed to remove location updates.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

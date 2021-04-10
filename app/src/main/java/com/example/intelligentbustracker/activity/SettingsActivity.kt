@@ -57,6 +57,9 @@ class SettingsActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferen
             "key_intelligent_bus_track" -> {
                 BusTrackerApplication.intelligentTracker.value = sharedPreferences!!.getBoolean(key, true).toString()
             }
+            "key_ask_location_change" -> {
+                BusTrackerApplication.askLocationChange = sharedPreferences!!.getBoolean(key, true).toString()
+            }
         }
     }
 }

@@ -108,6 +108,14 @@ class BusTrackerApplication : Application() {
             }
 
         var status: MutableLiveData<Status> = MutableLiveData(Status.WAITING_FOR_BUS)
+
+        var askLocationChange: String = "true"
+            get() {
+                if (field.isEmpty()) {
+                    field = DataManager(getInstance()).getSettingValueString(getInstance().getString(R.string.key_ask_location_change))
+                }
+                return field
+            }
     }
 
     override fun onCreate() {
@@ -130,6 +138,7 @@ class BusTrackerApplication : Application() {
             updateAccuracy = dataManager.getSettingValueString(getString(R.string.key_location_update_accuracy))
             mapTheme.postValue(dataManager.getSettingValueString(getString(R.string.key_map_theme)))
             intelligentTracker.postValue(dataManager.getSettingValueString(getString(R.string.key_intelligent_bus_track)))
+            askLocationChange = dataManager.getSettingValueString(getString(R.string.key_ask_location_change))
 
             stations = try {
                 deferredStations.await()

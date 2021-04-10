@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:backgroundTint="@color/darker_orange"
-    android:padding="5dp"
     app:cardCornerRadius="2dp"
     app:cardElevation="10dp"
     app:cardPreventCornerOverlap="false">
@@ -12,23 +11,26 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:weightSum="9">
 
         <TextView
             android:id="@+id/route_bus_number"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_weight="2"
             android:padding="10dp"
             android:text="@string/text_bus_number"
+            android:textAlignment="center"
             android:textColor="@color/white"
             android:textSize="28sp"
             android:theme="@style/FontGlobalBold" />
 
         <LinearLayout
             android:id="@+id/route_information_container"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="7"
             android:orientation="vertical"
             android:padding="10dp">
 

@@ -6,11 +6,13 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.location.Location
-import android.location.LocationManager
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.View
+import android.widget.Button
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
@@ -20,6 +22,7 @@ import com.directions.route.RouteException
 import com.directions.route.RoutingListener
 import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
+import com.example.intelligentbustracker.fragment.MapAssistFragment
 import com.example.intelligentbustracker.fragment.RoutingMapFragment
 import com.example.intelligentbustracker.fragment.SearchDialogFragment
 import com.example.intelligentbustracker.fragment.UserStatusFragment
@@ -52,12 +55,14 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.OnSharedPreferenceChangeListener, RoutingListener, SearchDialogFragment.SearchDialogListener, GoogleMap.OnMapClickListener, UserStatusFragment.OnStatusChangeListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.OnSharedPreferenceChangeListener, RoutingListener, SearchDialogFragment.SearchDialogListener, GoogleMap.OnMapClickListener, UserStatusFragment.OnStatusChangeListener,
+    MapAssistFragment.OnMapPositionClickListener {
 
     private lateinit var mMap: GoogleMap
 
     private lateinit var chosenStation: Station
     private lateinit var closestStation: Station
+//    private lateinit var closestStationToSelectedDestination: Station
 
     private var currentUser: MutableLiveData<User> = MutableLiveData()
     private var usersList: MutableLiveData<List<User>> = MutableLiveData()
@@ -71,8 +76,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
     private var routingMapFragment: RoutingMapFragment? = null
     private var searchDialogFragment: SearchDialogFragment? = null
     private var userStatusFragment: UserStatusFragment? = null
+    private var mapAssistFragment: MapAssistFragment? = null
 
-    private lateinit var myLocation: Location
+//    private lateinit var myLocation: Location
 
     private var polyLines = arrayListOf<Polyline>()
     private var clickedMarker: Marker? = null
@@ -257,9 +263,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
                 /** Search for a station, opens SearchDialog Fragment */
                 R.id.nav_search -> {
                     searchDialogFragment = SearchDialogFragment()
-                    searchDialogFragment?.let {
-                        it.show(supportFragmentManager, "SearchForStation")
-                    }
+                    searchDialogFragment?.show(supportFragmentManager, "SearchForStation")
                 }
                 /** Toggle location tracking */
                 R.id.nav_status -> {
@@ -272,9 +276,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
                         }
                     } else {
                         userStatusFragment = UserStatusFragment(this)
-                        userStatusFragment?.let {
-                            it.show(supportFragmentManager, "UserStatusFragment")
-                        }
+                        userStatusFragment?.show(supportFragmentManager, "UserStatusFragment")
                     }
                 }
                 /** Access settings by launching Settings Activity */
@@ -353,15 +355,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
         val scope = CoroutineScope(Dispatchers.Default)
         val jobCreateMarkers: Deferred<List<MarkerOptions>> = scope.async { MapUtils.createStationsMarkers(BusTrackerApplication.stations, applicationContext) }
 
-        if (this::myLocation.isInitialized) {
-            mMap.setOnMapClickListener(null)
-        } else {
-            if (this::chosenStation.isInitialized) {
-                mMap.setOnMapClickListener(this@MapsActivity)
-            } else {
+//        if (this::myLocation.isInitialized) {
+//            mMap.setOnMapClickListener(null)
+//        } else {
+//            if (this::chosenStation.isInitialized) {
+        mMap.setOnMapClickListener(this@MapsActivity)
+//            } else {
 //                Toast.makeText(this@MapsActivity, "Please choose a station from search first.", Toast.LENGTH_SHORT).show()
-            }
-        }
+//            }
+//        }
 
         // Get results from async methods
         runBlocking {
@@ -374,59 +376,126 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SharedPreferences.
     }
 
     /**
-     * Listener for selected location on map
-     * to be used as current location.
-     */
-    override fun onMapClick(position: LatLng) {
-        Toast.makeText(this@MapsActivity, "Current location updated.", Toast.LENGTH_SHORT).show()
-        val customLocation = Location(LocationManager.GPS_PROVIDER)
-        customLocation.latitude = position.latitude
-        customLocation.longitude = position.longitude
-
-//        currentUserLocation.value = customLocation
-        currentUser.value?.latitude = customLocation.latitude
-        currentUser.value?.longitude = customLocation.longitude
-
-        closestStation = GeneralUtils.getClosestStation(position)
-        text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, closestStation.name)
-        initializeRouting(chosenStation)
-    }
-
-    /**
      * Listener for selected station
      * in station search dialog.
      */
     override fun searchedForStation(station: Station) {
         chosenStation = station
-        searchDialogFragment?.let {
-            supportFragmentManager.beginTransaction().remove(it).commit()
-        }
-        searchDialogFragment = null
 
-        if (this::myLocation.isInitialized) {
-            initializeRouting(chosenStation)
-        } else {
-            Toast.makeText(this@MapsActivity, "Current location unknown, please wait for service location data.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun initializeRouting(station: Station) {
-        val busesWithNumber: IntArray = GeneralUtils.getBusNumbersWithGivenStation(station.name)
-        if (busesWithNumber.isNotEmpty()) {
-            routingMapFragment = RoutingMapFragment()
-            routingMapFragment?.let {
-                val bundle = Bundle()
-                bundle.putIntArray("buses_with_number", busesWithNumber)
-                bundle.putString("station_name", station.name)
-                bundle.putParcelable("current_latlng", LatLng(myLocation.latitude, myLocation.longitude))
-                it.arguments = bundle
-                it.show(supportFragmentManager, "Routing")
+        currentUserMarker?.let {
+            if (BusTrackerApplication.askLocationChange.toBoolean()) {
+                showLocationChangeDialog(LatLng(chosenStation.latitude, chosenStation.longitude), LatLng(it.position.latitude, it.position.longitude))
+            } else {
+                initializeRouting(LatLng(it.position.latitude, it.position.longitude), LatLng(station.latitude, station.longitude))
             }
-            Log.i(TAG, "initializeRouting: Searched for station: ${station.name}, found ${busesWithNumber.size} buses")
-        } else {
-            Toast.makeText(this@MapsActivity, "Couldn't find any bus with ${station.name} in their route.", Toast.LENGTH_SHORT).show()
+        } ?: run {
+            initializeMapAssistForManualCurrentLocation()
         }
     }
+
+    /**
+     * Callback from MapAssistFragment to
+     * choose current user location.
+     */
+    override fun onMapAssistClick(position: LatLng) {
+        val markerId: Int = MapUtils.getMarkerIdForCurrentUser()
+        currentUserMarker = mMap.addMarker(
+            MarkerOptions()
+                .position(position)
+                .title("You")
+                .snippet("Your current position")
+                .icon(MapUtils.bitmapFromVector(this@MapsActivity, markerId))
+        )
+        MapUtils.moveCameraToLocation(mMap, position)
+        if (!this::closestStation.isInitialized) {
+            closestStation = GeneralUtils.getClosestStation(position)
+        }
+        text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, closestStation.name)
+
+//        initializeManualRouting(position)
+//        onMapClick(position)
+//        initializeRouting()
+    }
+
+    /**
+     * Listener for selected location on map
+     * to be used as current location.
+     */
+    override fun onMapClick(position: LatLng) {
+        currentUserMarker?.let {
+            if (BusTrackerApplication.askLocationChange.toBoolean()) {
+                showLocationChangeDialog(position, LatLng(it.position.latitude, it.position.longitude))
+            } else {
+                initializeRouting(LatLng(it.position.latitude, it.position.longitude), position)
+            }
+        } ?: run {
+            initializeMapAssistForManualCurrentLocation()
+        }
+    }
+
+    private fun showLocationChangeDialog(destinationPosition: LatLng, currentPosition: LatLng) {
+        val builder: AlertDialog.Builder = AlertDialog.Builder(this@MapsActivity)
+        val inflater = this.layoutInflater
+        val dialogView: View = inflater.inflate(R.layout.custom_location_setup_dialog, null)
+        builder.setView(dialogView)
+        val buttonYes: Button = dialogView.findViewById(R.id.custom_location_setup_yes_button)
+        val buttonNo: Button = dialogView.findViewById(R.id.custom_location_setup_no_button)
+
+        val alertDialog: AlertDialog = builder.create()
+
+        buttonYes.setOnClickListener {
+            initializeMapAssistForManualCurrentLocation()
+            alertDialog.cancel()
+        }
+
+        buttonNo.setOnClickListener {
+            initializeRouting(destinationPosition, currentPosition)
+            alertDialog.cancel()
+        }
+
+        alertDialog.show()
+    }
+
+//    private fun initializeManualRouting(destinationPosition: LatLng, currentPosition: LatLng) {
+////        closestStationToSelectedDestination = GeneralUtils.getClosestStation(destinationPosition)
+//        initializeRouting(destinationPosition, currentPosition)
+//    }
+
+    private fun initializeMapAssistForManualCurrentLocation() {
+        Toast.makeText(this@MapsActivity, "Please tap on the map to select your current location.", Toast.LENGTH_SHORT).show()
+        mapAssistFragment = MapAssistFragment(this@MapsActivity)
+        mapAssistFragment?.show(supportFragmentManager, "MapAssist")
+    }
+
+    private fun initializeRouting(currentPosition: LatLng, destinationPosition: LatLng) {
+        routingMapFragment = RoutingMapFragment()
+        routingMapFragment?.let {
+            val bundle = Bundle()
+            bundle.putParcelable("current_latlng", currentPosition)
+            bundle.putParcelable("destination_latlng", destinationPosition)
+            it.arguments = bundle
+            it.show(supportFragmentManager, "Routing")
+        }
+//        Log.i(TAG, "initializeRouting: Searched for station: ${station.name}, found ${busesWithNumber.size} buses")
+    }
+
+//    private fun initializeRouting(station: Station, currentPosition: LatLng) {
+//        val busesWithNumber: IntArray = GeneralUtils.getBusNumbersWithGivenStation(station.name)
+//        if (busesWithNumber.isNotEmpty()) {
+//            routingMapFragment = RoutingMapFragment()
+//            routingMapFragment?.let {
+//                val bundle = Bundle()
+//                bundle.putIntArray("buses_with_number", busesWithNumber)
+//                bundle.putString("station_name", station.name)
+//                bundle.putParcelable("current_latlng", currentPosition)
+//                it.arguments = bundle
+//                it.show(supportFragmentManager, "Routing")
+//            }
+//            Log.i(TAG, "initializeRouting: Searched for station: ${station.name}, found ${busesWithNumber.size} buses")
+//        } else {
+//            Toast.makeText(this@MapsActivity, "Couldn't find any bus with ${station.name} in their route.", Toast.LENGTH_SHORT).show()
+//        }
+//    }
 
     override fun onStart() {
         super.onStart()

@@ -36,13 +36,14 @@ class MapAssistFragment(private val listener: OnMapPositionClickListener) : Dial
             MapUtils.setupMap(mMap, mapAssistContext, BusTrackerApplication.mapTheme.value!!)
 
             mMap.setOnMapClickListener { position ->
-                listener.onMapClick(position)
+                listener.onMapAssistClick(position)
+                dismiss()
             }
         }
         return rootView
     }
 
     interface OnMapPositionClickListener {
-        fun onMapClick(position: LatLng)
+        fun onMapAssistClick(position: LatLng)
     }
 }

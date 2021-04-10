@@ -41,7 +41,10 @@ class SearchDialogFragment : DialogFragment() {
             searchListView.setOnItemClickListener { parent, view, position, id ->
                 val stationName = adapter.getItem(position)
                 val station = BusTrackerApplication.stations.firstOrNull { x -> x.name == stationName }
-                station?.let { listener.searchedForStation(it) }
+                station?.let {
+                    listener.searchedForStation(it)
+                    dismiss()
+                }
             }
 
             searchView.queryHint = "Search for a station..."
