@@ -18,14 +18,13 @@ import com.directions.route.RoutingListener
 import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.adapter.RouteRecyclerAdapter
-import com.example.intelligentbustracker.model.BusToStation
-import com.example.intelligentbustracker.model.LeavingHour
+import com.example.intelligentbustracker.model.BusResult
+import com.example.intelligentbustracker.model.Direction
 import com.example.intelligentbustracker.util.GeneralUtils
 import com.example.intelligentbustracker.util.RoutingUtil
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
-import com.google.android.material.snackbar.Snackbar
 import java.util.ArrayList
 import kotlinx.android.synthetic.main.fragment_route_dialog_layout.view.route_dialog_recycler_view
 
@@ -39,7 +38,8 @@ class RoutingMapFragment : DialogFragment() {
     private lateinit var busNumbers: IntArray
     private lateinit var selectedStation: String
 
-    private lateinit var buses: List<BusToStation>
+    private lateinit var buses: List<List<BusResult>>
+//    private lateinit var buses: List<BusToStation>
 
     private lateinit var currentLatLng: LatLng
     private lateinit var destinationLatLng: LatLng
@@ -74,12 +74,23 @@ class RoutingMapFragment : DialogFragment() {
     }
 
     private var routingListenerToStation: RouteRecyclerAdapter.OnRouteItemClickListener = object : RouteRecyclerAdapter.OnRouteItemClickListener {
-        override fun onItemClick(bus: BusToStation, position: Int) {
-            Log.i(TAG, "onItemClick: selected bus ${bus.busNumber}")
+        override fun onItemClick(busResult: List<BusResult>, position: Int) {
+            Log.i(TAG, "onItemClick: selected bus ${busResult}")
 
-            val leavingHour: LeavingHour? = GeneralUtils.getEarliestLeaveTimeForBusTowardsStation(bus.busNumber, bus.stationTo.name)
-            leavingHour?.let { leaving ->
-                Toast.makeText(routingMapContext, "Closest arrival time for ${bus.busNumber} is at ${leaving.hour} from ${leaving.fromStation}", Toast.LENGTH_SHORT).show()
+            val stationName: String = if (busResult[0].direction == Direction.DIRECTION_1) {
+                busResult[0].bus.scheduleRoutes.scheduleRoute1[0]
+            } else {
+                busResult[0].bus.scheduleRoutes.scheduleRoute2[0]
+            }
+            val stationFrom = GeneralUtils.getStationFromName(stationName)
+            stationFrom?.let {
+                Toast.makeText(routingMapContext, "Arrives in approximately ${GeneralUtils.getDurationForRoute(LatLng(it.latitude, it.longitude), currentLatLng, routingMapContext)}", Toast.LENGTH_SHORT).show()
+            }
+
+
+//            val leavingHour: LeavingHour? = GeneralUtils.getEarliestLeaveTimeForBusTowardsStation(bus.busNumber, bus.stationTo.name)
+//            leavingHour?.let { leaving ->
+//                Toast.makeText(routingMapContext, "Closest arrival time for ${bus.busNumber} is at ${leaving.hour} from ${leaving.fromStation}", Toast.LENGTH_SHORT).show()
 //                var stations: List<Station> = ArrayList()
 //                if (bus.scheduleRoutes.scheduleRoute1[0] == leaving.fromStation) {
 //                    stations = GeneralUtils.generateStationListFromStationNames(BusTrackerApplication.stations, bus.scheduleRoutes.scheduleRoute1)
@@ -99,7 +110,7 @@ class RoutingMapFragment : DialogFragment() {
 //                routeToClosestStation?.execute()
 //                MapUtils.moveCameraToLatLngWithZoom(mMap, currentLatLng, 18F)
 //                }
-            }
+//            }
 
             routeAdapter.notifyItemChanged(position)
         }

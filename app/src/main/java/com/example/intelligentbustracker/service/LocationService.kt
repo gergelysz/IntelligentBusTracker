@@ -14,7 +14,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -25,9 +24,12 @@ import com.example.intelligentbustracker.model.Bus
 import com.example.intelligentbustracker.model.Station
 import com.example.intelligentbustracker.model.Status
 import com.example.intelligentbustracker.model.User
+import com.example.intelligentbustracker.receiver.ActivityTransitionReceiver
 import com.example.intelligentbustracker.util.Common
+import com.example.intelligentbustracker.util.Constants
 import com.example.intelligentbustracker.util.GeneralUtils
 import com.example.intelligentbustracker.util.IntelligentTrackerUtils
+import com.google.android.gms.location.ActivityRecognitionClient
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -56,9 +58,12 @@ class LocationService : Service() {
         private const val CHANNEL_ID = "channel_01"
         private const val PACKAGE_NAME = "com.example.intelligentbustracker"
         private const val EXTRA_STARTED_FROM_NOTIFICATION = "$PACKAGE_NAME.started_from_notification"
+        private const val STARTED_FROM_MAIN_ACTIVITY = "started_from_main_activity"
         private const val NOTIFICATION_ID = 1234
         private const val TAG = "LocationService"
     }
+
+    private lateinit var client: ActivityRecognitionClient
 
     private lateinit var busesWithStations: List<Bus>
     private lateinit var closestStations: List<Station>
@@ -116,6 +121,25 @@ class LocationService : Service() {
 //            }
             return builder.build()
         }
+
+    private fun requestActivityUpdates() {
+        client.requestActivityTransitionUpdates(IntelligentTrackerUtils.getActivityTransitionRequest(), getPendingIntent())
+            .addOnSuccessListener {
+                Log.i(TAG, "requestActivityUpdates: Success")
+            }
+            .addOnFailureListener {
+                Log.i(TAG, "requestActivityUpdates: Failure")
+            }
+    }
+
+    private fun getPendingIntent(): PendingIntent {
+        val intent = Intent(this, ActivityTransitionReceiver::class.java)
+        return PendingIntent.getBroadcast(this, Constants.REQUEST_CODE_INTENT_ACTIVITY_TRANSITION, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    private fun removeActivityUpdates() {
+        client.removeActivityUpdates(getPendingIntent())
+    }
 
     private fun uploadUser(user: User) = CoroutineScope(Dispatchers.IO).launch {
         try {
@@ -184,7 +208,7 @@ class LocationService : Service() {
     // TODO: Check if next station (with direction that has current station) is getting closer
     private fun processLocationDataWithIntelligentTracker(locationResult: LocationResult) = CoroutineScope(Dispatchers.Default).launch {
         val lastLocation = locationResult.lastLocation
-        val speed = IntelligentTrackerUtils.getSpeedkmph(lastLocation.speed)
+        val speed = GeneralUtils.getSpeedkmph(lastLocation.speed)
         Log.i(TAG, "processLocationDataWithIntelligentTracker: current speed = $speed km/h")
         // Average walking speed is 5 km/h
         if (speed > 5F) {
@@ -233,7 +257,7 @@ class LocationService : Service() {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         locationCallback = object : LocationCallback() {
 
-            private lateinit var intelligentTrackerTask: Job
+            private var intelligentTrackerTask: Job? = null
 
             override fun onLocationResult(p0: LocationResult) {
                 super.onLocationResult(p0)
@@ -255,7 +279,7 @@ class LocationService : Service() {
                     }
                 }
                 runBlocking {
-                    intelligentTrackerTask.join()
+                    intelligentTrackerTask?.join()
                 }
             }
         }
@@ -304,9 +328,12 @@ class LocationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val startedFromNotification = intent!!.getBooleanExtra(EXTRA_STARTED_FROM_NOTIFICATION, false)
+        val startedFromNotification = intent?.getBooleanExtra(EXTRA_STARTED_FROM_NOTIFICATION, false) ?: false
+        val startedFromMainActivity = intent?.getBooleanExtra(STARTED_FROM_MAIN_ACTIVITY, false) ?: false
         if (startedFromNotification) {
             removeLocationUpdates()
+        } else if (startedFromMainActivity) {
+            startForeground(NOTIFICATION_ID, notification)
         }
         return START_NOT_STICKY
     }
@@ -322,7 +349,8 @@ class LocationService : Service() {
             startService(Intent(applicationContext, LocationService::class.java))
             running = true
             uploaded = false
-            fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, Looper.myLooper())
+            fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, mServiceHandler!!.looper)
+//            fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, Looper.myLooper())
         } catch (ex: SecurityException) {
             Common.setRequestingLocationUpdates(this, false)
             Log.e(TAG, "Lost location permission. $ex")
@@ -392,16 +420,22 @@ class LocationService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         // Delete current user data
         if (!Common.requestingLocationUpdates(this)) {
-            if (running) {
-                val removeUpdatesTask = fusedLocationProviderClient!!.removeLocationUpdates(locationCallback!!)
-                removeUpdatesTask.addOnSuccessListener {
-                    currentUserDocumentReference?.delete()
-                    running = false
-                    stopSelf()
-                    super.onTaskRemoved(rootIntent)
-                }.addOnFailureListener {
-                    Toast.makeText(this@LocationService, "Failed to remove location updates.", Toast.LENGTH_LONG).show()
-                }
+            timer?.let {
+                it.cancel()
+                it.purge()
+            }
+            val removeUpdatesTask = fusedLocationProviderClient!!.removeLocationUpdates(locationCallback!!)
+            removeUpdatesTask.addOnSuccessListener {
+                currentUserDocumentReference?.delete()
+                running = false
+                stopSelf()
+                super.onTaskRemoved(rootIntent)
+            }.addOnFailureListener {
+                currentUserDocumentReference?.delete()
+                running = false
+                stopSelf()
+                super.onTaskRemoved(rootIntent)
+                Log.d(TAG, "onTaskRemoved: Failed to remove location updates because they weren't requested yet.")
             }
         }
     }

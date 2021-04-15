@@ -8,13 +8,24 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.RelativeLayout
 import com.example.intelligentbustracker.BusTrackerApplication
+import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.model.Bus
 import com.example.intelligentbustracker.model.Direction
 import com.example.intelligentbustracker.model.LeavingHour
 import com.example.intelligentbustracker.model.LeavingHours
 import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
+import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
+import com.google.android.gms.maps.model.PolylineOptions
+import com.google.maps.DirectionsApi
+import com.google.maps.GeoApiContext
+import com.google.maps.android.PolyUtil
+import com.google.maps.model.DirectionsLeg
+import com.google.maps.model.DirectionsResult
+import com.google.maps.model.DirectionsRoute
+import com.google.maps.model.Duration
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -30,6 +41,12 @@ class GeneralUtils {
     companion object {
 
         private const val NOT_FOUND = "NOT FOUND"
+        private const val EARTH_RADIUS_M: Double = 6371.0 * 1000
+        private const val PATTERN_TIME = "HH:mm"
+
+        fun getStationFromName(stationName: String): Station? {
+            return BusTrackerApplication.stations.firstOrNull { x -> x.name == stationName }
+        }
 
         /**
          * Returns a given number of stations with a given maximum
@@ -111,12 +128,33 @@ class GeneralUtils {
             val a = (sin(dlat / 2).pow(2.0) + (cos(lat1) * cos(lat2) * sin(dlon / 2).pow(2.0)))
             val c = 2 * asin(sqrt(a))
 
-            // Radius of earth in kilometers.
-            // Use 3956 for miles
-            val r = 6371.0 * 1000
-
             // calculate the result
-            return c * r
+            return c * EARTH_RADIUS_M
+        }
+
+        fun addPolyline(results: DirectionsResult, mMap: GoogleMap): Polyline {
+            val decodedPath: List<LatLng> = PolyUtil.decode(results.routes[0].overviewPolyline.encodedPath)
+            return mMap.addPolyline(PolylineOptions().addAll(decodedPath))
+        }
+
+        fun getDurationForRoute(origin: LatLng, destination: LatLng, context: Context): String {
+            // We need a context to access the API
+            val geoApiContext: GeoApiContext = GeoApiContext.Builder()
+                .apiKey(context.getString(R.string.google_maps_key))
+                .build()
+
+            // Perform the actual request
+            val directionsResult: DirectionsResult = DirectionsApi.newRequest(geoApiContext)
+                .mode(com.google.maps.model.TravelMode.DRIVING)
+                .origin(origin.toString())
+                .destination(destination.toString())
+                .await()
+
+            // Parse the result
+            val route: DirectionsRoute = directionsResult.routes[0]
+            val leg: DirectionsLeg = route.legs[0]
+            val duration: Duration = leg.duration
+            return duration.humanReadable
         }
 
         fun getEarliestNLeaveTimesForBusTowardsStation(busNumber: Int, stationName: String, numberOfLeaveTimes: Int): List<LeavingHour> {
@@ -212,6 +250,14 @@ class GeneralUtils {
         }
 
         /**
+         * Converts default speed (meters/second)
+         * to kilometers/hour.
+         */
+        fun getSpeedkmph(speedmps: Float): Float {
+            return speedmps.times(3.6F)
+        }
+
+        /**
          * Returns the earliest leaving hour based on a list containing the hours
          * and minutes and the current time. If no match then return "NOT_FOUND".
          */
@@ -249,6 +295,20 @@ class GeneralUtils {
             return listOfBusesWithGivenStation
         }
 
+        /**
+         * Returns a list of Bus objects containing
+         * the station passed in the 'station' parameter.
+         */
+        fun getBusesWithGivenStation(station: Station): List<Bus> {
+            val listOfBusesWithGivenStation = ArrayList<Bus>()
+            for (bus in BusTrackerApplication.buses) {
+                if (bus.containsStation(station.name)) {
+                    listOfBusesWithGivenStation.add(bus)
+                }
+            }
+            return listOfBusesWithGivenStation
+        }
+
         fun getBusNumbersWithGivenStation(stationName: String): IntArray {
             val listOfBusesWithGivenStation: MutableList<Int> = ArrayList()
             for (bus in BusTrackerApplication.buses) {
@@ -258,7 +318,6 @@ class GeneralUtils {
             }
             return listOfBusesWithGivenStation.toIntArray()
         }
-
 
         fun populateListWithMatchingStations(stations: MutableList<Station>, scheduleRoute: ArrayList<String>) {
             for (station in BusTrackerApplication.stations) {
@@ -289,10 +348,9 @@ class GeneralUtils {
                         Manifest.permission.ACCESS_COARSE_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION,
                         Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                        Manifest.permission.FOREGROUND_SERVICE
-//                        ,
+                        Manifest.permission.FOREGROUND_SERVICE,
                         // Activity recognition check
-//                        Manifest.permission.ACTIVITY_RECOGNITION
+                        Manifest.permission.ACTIVITY_RECOGNITION
                     )
                 } else {
                     listOf(
@@ -310,12 +368,18 @@ class GeneralUtils {
             return permissions
         }
 
+        /**
+         * Returns today's DAY_OF_WEEK representation.
+         */
         fun getTodayDayType(): Int {
             val calendar: Calendar = Calendar.getInstance()
             return calendar.get(Calendar.DAY_OF_WEEK)
         }
 
-        fun getTomorrowDayType(): Int {
+        /**
+         * Returns tomorrow's DAY_OF_WEEK representation.
+         */
+        private fun getTomorrowDayType(): Int {
             val calendar: Calendar = Calendar.getInstance()
             calendar.add(Calendar.DAY_OF_YEAR, 1)
             return calendar.get(Calendar.DAY_OF_WEEK)
@@ -326,8 +390,7 @@ class GeneralUtils {
          * in 24 hour format.
          */
         private fun getHourAndMinuteString(): String {
-            val pattern = "HH:mm"
-            val simpleDateFormat = SimpleDateFormat(pattern, Locale.getDefault())
+            val simpleDateFormat = SimpleDateFormat(PATTERN_TIME, Locale.getDefault())
             return simpleDateFormat.format(Date())
         }
 

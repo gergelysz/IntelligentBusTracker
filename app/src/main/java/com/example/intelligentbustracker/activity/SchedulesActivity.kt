@@ -9,6 +9,7 @@ import com.example.intelligentbustracker.adapter.ScheduleRecyclerAdapter
 import com.example.intelligentbustracker.fragment.ScheduleMapFragment
 import com.example.intelligentbustracker.model.Schedule
 import kotlinx.android.synthetic.main.activity_schedules.schedules_recycler_view
+import kotlinx.android.synthetic.main.activity_schedules.text_view_main_schedule_activity
 
 class SchedulesActivity : AppCompatActivity(), ScheduleRecyclerAdapter.OnScheduleItemClickListener {
 
@@ -17,6 +18,7 @@ class SchedulesActivity : AppCompatActivity(), ScheduleRecyclerAdapter.OnSchedul
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_schedules)
+        text_view_main_schedule_activity.text = this@SchedulesActivity.getString(R.string.list_containing_the_schedule_for_s_buses, BusTrackerApplication.schedules.size)
         initRecyclerView()
         addDataSet()
     }

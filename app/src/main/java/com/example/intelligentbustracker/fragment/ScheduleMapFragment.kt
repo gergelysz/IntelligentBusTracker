@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 
+
 class ScheduleMapFragment : DialogFragment() {
 
     private lateinit var mMap: GoogleMap

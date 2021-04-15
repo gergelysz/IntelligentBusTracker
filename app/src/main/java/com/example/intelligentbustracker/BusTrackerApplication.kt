@@ -3,12 +3,10 @@ package com.example.intelligentbustracker
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.example.intelligentbustracker.model.Bus
-import com.example.intelligentbustracker.model.BusRoute
 import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
 import com.example.intelligentbustracker.model.Status
 import com.example.intelligentbustracker.util.DataManager
-import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -26,12 +24,6 @@ class BusTrackerApplication : Application() {
         }
 
         private fun isInitialised() = ::instance.isInitialized
-
-        /**
-         * Stores the stations retrieved
-         * from stations.csv
-         */
-        var busRoutes: MutableList<BusRoute> = ArrayList()
 
         /**
          * Stores the stations retrieved
@@ -156,24 +148,6 @@ class BusTrackerApplication : Application() {
                 deferredSchedules.await()
             } catch (ex: Exception) {
                 ArrayList()
-            }
-
-            for (bus in buses) {
-                val stationsRoute1 = ArrayList<LatLng>()
-                for (station in bus.scheduleRoutes.scheduleRoute1) {
-                    val stationElement = stations.firstOrNull { x -> x.name == station }
-                    stationElement?.let {
-                        stationsRoute1.add(LatLng(it.latitude, it.longitude))
-                    }
-                }
-                val stationsRoute2 = ArrayList<LatLng>()
-                for (station in bus.scheduleRoutes.scheduleRoute2) {
-                    val stationElement = stations.firstOrNull { x -> x.name == station }
-                    stationElement?.let {
-                        stationsRoute2.add(LatLng(it.latitude, it.longitude))
-                    }
-                }
-                busRoutes.add(BusRoute(bus.number, stationsRoute1, stationsRoute2))
             }
         }
     }

@@ -107,4 +107,6 @@
     <string name="direction1">Direction1</string>
     <string name="direction2">Direction2</string>
     <string name="tap_on_the_map_to_choose_your_current_location">Tap on the map to choose your current location:</string>
+    <string name="text_bus_title">%1$s - %2$s</string>
+    <string name="list_containing_the_schedule_for_s_buses">List containing the schedule for %d buses</string>
 </resources>

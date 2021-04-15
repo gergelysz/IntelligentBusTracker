@@ -48,14 +48,16 @@ class MainActivity : AppCompatActivity() {
                         report?.let {
                             if (it.areAllPermissionsGranted()) {
                                 Log.i(TAG, "onPermissionsChecked: all permissions granted")
-                                Intent(BusTrackerApplication.getInstance(), LocationService::class.java).also { intent ->
+                                val intent = Intent(Intent(BusTrackerApplication.getInstance(), LocationService::class.java))
+                                intent.putExtra("started_from_main_activity", true)
+                                intent.also { intentToService ->
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                         Log.d(TAG, "startLocationService: Starting the service in >= 26 API Level Mode")
-                                        startForegroundService(intent)
+                                        startForegroundService(intentToService)
                                         return
                                     }
                                     Log.d(TAG, "startLocationService: Starting the service in < 26 API Level Mode")
-                                    startService(intent)
+                                    startService(intentToService)
                                 }
                             } else {
                                 showSettingsDialog()
@@ -73,18 +75,21 @@ class MainActivity : AppCompatActivity() {
 
         runBlocking {
             deferredDexterBuilder.await().check()
-        }
 
-        load_map_button.setOnClickListener {
-            startActivity(Intent(this@MainActivity, MapsActivity::class.java))
-        }
+            load_map_button.setOnClickListener {
+                startActivity(Intent(this@MainActivity, MapsActivity::class.java))
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            }
 
-        settings_button.setOnClickListener {
-            startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-        }
+            settings_button.setOnClickListener {
+                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            }
 
-        schedules_button.setOnClickListener {
-            startActivity(Intent(this@MainActivity, SchedulesActivity::class.java))
+            schedules_button.setOnClickListener {
+                startActivity(Intent(this@MainActivity, SchedulesActivity::class.java))
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            }
         }
     }
 

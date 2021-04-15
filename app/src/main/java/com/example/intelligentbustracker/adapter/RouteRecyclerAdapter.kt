@@ -5,23 +5,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
-import com.example.intelligentbustracker.model.BusToStation
-import com.example.intelligentbustracker.model.Direction
-import com.example.intelligentbustracker.model.LeavingHours
+import com.example.intelligentbustracker.model.BusResult
 import com.example.intelligentbustracker.util.GeneralUtils
-import java.util.Calendar
 import kotlinx.android.synthetic.main.layout_route_list_item.view.route_bus_details
 import kotlinx.android.synthetic.main.layout_route_list_item.view.route_bus_number
 import kotlinx.android.synthetic.main.layout_route_list_item.view.route_bus_title
 
 class RouteRecyclerAdapter(private val listener: OnRouteItemClickListener) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-//    private lateinit var submittedBuses: Map<Bus, Direction>
+    private lateinit var items: List<List<BusResult>>
 
-    //    private lateinit var items: List<Bus>
-    private lateinit var items: List<BusToStation>
+    private lateinit var busNumberText: String
+    private lateinit var busTitleText: String
+    private lateinit var busDetailsText: String
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return RouteViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.layout_route_list_item, parent, false))
@@ -48,19 +45,16 @@ class RouteRecyclerAdapter(private val listener: OnRouteItemClickListener) : Rec
             itemView.setOnClickListener(this)
         }
 
-        //        fun bind(bus: Bus) {
-        fun bind(bus: BusToStation) {
-            routeBusNumber.text = bus.busNumber.toString()
-//            routeBusTitle.text = getDirection(bus)
-            routeBusTitle.text = "${bus.scheduleRoute.first()} - ${bus.scheduleRoute.last()}"
-//            routeBusDetails.text = getSchedule(bus, GeneralUtils.getDay())
-//            routeBusDetails.text = getSchedule(bus, GeneralUtils.getTodayDayType())
-            val hours = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(bus.busNumber, bus.stationTo.name, 3)
-            routeBusDetails.text = hours.joinToString(", ") { x -> x.hour }
+        fun bind(busResult: List<BusResult>) {
+            initValues(busResult)
+
+            routeBusNumber.text = busNumberText
+            routeBusTitle.text = busTitleText
+            routeBusDetails.text = busDetailsText
         }
 
         override fun onClick(v: View?) {
-            val position: Int = adapterPosition
+            val position: Int = bindingAdapterPosition
             if (position != RecyclerView.NO_POSITION) {
                 listener.onItemClick(items[position], position)
             }
@@ -68,45 +62,28 @@ class RouteRecyclerAdapter(private val listener: OnRouteItemClickListener) : Rec
     }
 
     interface OnRouteItemClickListener {
-        //        fun onItemClick(bus: Bus, position: Int)
-        fun onItemClick(bus: BusToStation, position: Int)
+        fun onItemClick(busResult: List<BusResult>, position: Int)
     }
 
-    //    fun submitBuses(buses: Map<Bus, Direction>) {
-    fun submitBuses(buses: List<BusToStation>) {
-//        items = ArrayList(buses.keys)
+    fun submitBuses(buses: List<List<BusResult>>) {
         items = buses
-//        submittedBuses = buses
     }
 
-//    private fun getDirection(bus: Bus): String {
-//        val direction = submittedBuses[bus]
-//        if (Direction.DIRECTION_1 == direction) {
-//            return "${bus.scheduleRoutes.scheduleRoute1.first()} - ${bus.scheduleRoutes.scheduleRoute1.last()}"
-//        } else if (Direction.DIRECTION_2 == direction) {
-//            return "${bus.scheduleRoutes.scheduleRoute2.first()} - ${bus.scheduleRoutes.scheduleRoute2.last()}"
-//        }
-//        return "Couldn't determine direction"
-//    }
-
-    private fun getSchedule(bus: BusToStation, day: Int): String {
-        val schedule = GeneralUtils.getScheduleFromBusNumber(bus.busNumber, BusTrackerApplication.schedules)
-        schedule?.let {
-            if (Direction.DIRECTION_1 == bus.direction) {
-                return processSchedules(it.leavingHours1, day)
-            } else if (Direction.DIRECTION_2 == bus.direction) {
-                return processSchedules(it.leavingHours2, day)
-            }
+    /**
+     * Initializes values for the TextViews in the list item.
+     */
+    private fun initValues(busResult: List<BusResult>) {
+        if (busResult.size == 1) {
+            busNumberText = busResult[0].bus.number.toString()
+            busTitleText = "${busResult[0].stationUp} - ${busResult[0].stationDown}"
+            val hours = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[0].bus.number, busResult[0].stationDown, 3)
+            busDetailsText = hours.joinToString(", ") { x -> x.hour }
+        } else if (busResult.size > 1) {
+            busNumberText = busResult[0].bus.number.toString() + "\n➜\n" + busResult[1].bus.number.toString()
+            busTitleText = "${busResult[0].stationUp} - ${busResult[0].stationDown} ➜ ${busResult[1].stationUp} - ${busResult[1].stationDown}"
+            val hoursFirst = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[0].bus.number, busResult[0].stationDown, 3)
+            val hoursSecond = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[1].bus.number, busResult[1].stationDown, 3)
+            busDetailsText = hoursFirst.joinToString(", ") { x -> x.hour } + "\n" + hoursSecond.joinToString(", ") { x -> x.hour }
         }
-        return "Couldn't determine direction"
-    }
-
-    private fun processSchedules(leavingHours: LeavingHours, day: Int): String {
-        val scheduleTimes: List<String> = when (day) {
-            Calendar.SATURDAY -> leavingHours.saturdayLeavingHours
-            Calendar.SUNDAY -> leavingHours.sundayLeavingHours
-            else -> leavingHours.weekdayLeavingHours
-        }
-        return scheduleTimes.joinToString(" ")
     }
 }

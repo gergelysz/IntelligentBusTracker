@@ -34,6 +34,9 @@ class MapUtils {
     companion object {
         private const val TAG = "MapUtils"
 
+        private val DARK_MAPS = listOf("map_style_dark", "map_style_night")
+        private val LIGHT_MAPS = listOf("map_style_standard", "map_style_retro")
+
         fun animateMarker(marker: Marker, toPosition: LatLng, projection: Projection) {
             val handler = Handler()
             val start = SystemClock.uptimeMillis()
@@ -75,11 +78,14 @@ class MapUtils {
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoomLevel))
         }
 
+        /**
+         * Check if new map theme and old map theme are of type light or
+         * dark and then check if they match so trigger style change.
+         */
         fun mapThemeChangeNeeded(themeString: String, latestMapTheme: String): Boolean {
-            if (listOf("map_style_dark", "map_style_night").containsAll(listOf(themeString, latestMapTheme)) ||
-                listOf("map_style_standard", "map_style_retro").containsAll(listOf(themeString, latestMapTheme))
-            ) {
-                return false
+            val currentAndLatestTheme = listOf(themeString, latestMapTheme)
+            if (DARK_MAPS.containsAll(currentAndLatestTheme) || LIGHT_MAPS.containsAll(currentAndLatestTheme)) {
+                return themeString != latestMapTheme
             }
             return true
         }
@@ -337,7 +343,7 @@ class MapUtils {
          * from given list of Stations.
          */
         private fun getWayPointsForStations(stations: List<Station>): List<LatLng> {
-            val wayPoints: MutableList<LatLng> = ArrayList()
+            val wayPoints = arrayListOf<LatLng>()
             for (station in stations) {
                 wayPoints.add(LatLng(station.latitude, station.longitude))
             }

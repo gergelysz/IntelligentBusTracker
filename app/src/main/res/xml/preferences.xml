@@ -32,7 +32,6 @@
             android:title="@string/title_intelligent_bus_track" />
     </PreferenceCategory>
 
-
     <PreferenceCategory android:title="Interface">
         <ListPreference
             android:defaultValue="@string/map_theme_default"

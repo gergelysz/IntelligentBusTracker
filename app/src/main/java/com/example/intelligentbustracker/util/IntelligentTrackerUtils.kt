@@ -7,14 +7,6 @@ import com.google.android.gms.location.DetectedActivity
 class IntelligentTrackerUtils {
 
     companion object {
-        /**
-         * Converts default speed (meters/second)
-         * to kilometers/hour.
-         */
-        fun getSpeedkmph(speedmps: Float): Float {
-            return speedmps.times(3.6F)
-        }
-
         private fun getTransitions(): MutableList<ActivityTransition> {
             val transitions = mutableListOf<ActivityTransition>()
 
