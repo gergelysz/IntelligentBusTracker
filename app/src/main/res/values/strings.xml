@@ -58,6 +58,11 @@
     <string name="title_intelligent_bus_track">Let the application manage status</string>
     <string name="intelligent_bus_track_default">true</string>
 
+    <!-- Intelligent Bus Track Debug -->
+    <string name="key_intelligent_bus_track_debug">key_intelligent_bus_track_debug</string>
+    <string name="title_intelligent_bus_track_debug">Show debug view with closest stations and possible buses</string>
+    <string name="intelligent_bus_track_debug_default">true</string>
+
     <!-- Map themes -->
     <string name="map_theme">Map theme</string>
     <string name="key_map_theme">key_map_theme</string>
@@ -109,4 +114,6 @@
     <string name="tap_on_the_map_to_choose_your_current_location">Tap on the map to choose your current location:</string>
     <string name="text_bus_title">%1$s - %2$s</string>
     <string name="list_containing_the_schedule_for_s_buses">List containing the schedule for %d buses</string>
+    <string name="closest_stations_s">Closest stations: %s</string>
+    <string name="possible_buses_s">Possible buses: %s</string>
 </resources>

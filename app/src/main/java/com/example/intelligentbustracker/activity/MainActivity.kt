@@ -2,15 +2,12 @@ package com.example.intelligentbustracker.activity
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
-import com.example.intelligentbustracker.service.LocationService
 import com.example.intelligentbustracker.util.GeneralUtils
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.DexterBuilder
@@ -48,17 +45,6 @@ class MainActivity : AppCompatActivity() {
                         report?.let {
                             if (it.areAllPermissionsGranted()) {
                                 Log.i(TAG, "onPermissionsChecked: all permissions granted")
-                                val intent = Intent(Intent(BusTrackerApplication.getInstance(), LocationService::class.java))
-                                intent.putExtra("started_from_main_activity", true)
-                                intent.also { intentToService ->
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                        Log.d(TAG, "startLocationService: Starting the service in >= 26 API Level Mode")
-                                        startForegroundService(intentToService)
-                                        return
-                                    }
-                                    Log.d(TAG, "startLocationService: Starting the service in < 26 API Level Mode")
-                                    startService(intentToService)
-                                }
                             } else {
                                 showSettingsDialog()
                             }

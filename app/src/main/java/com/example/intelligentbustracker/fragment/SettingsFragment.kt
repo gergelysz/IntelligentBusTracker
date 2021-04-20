@@ -3,6 +3,7 @@ package com.example.intelligentbustracker.fragment
 import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreference
 import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
 
@@ -42,7 +43,23 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 BusTrackerApplication.mapTheme.value = sharedPreferences!!.getString(key, "map_style_retro") ?: "map_style_retro"
             }
             "key_intelligent_bus_track" -> {
-                BusTrackerApplication.intelligentTracker.value = sharedPreferences!!.getBoolean(key, true).toString()
+                val booleanValue = sharedPreferences!!.getBoolean(key, true)
+                BusTrackerApplication.intelligentTracker.value = booleanValue.toString()
+                val preferenceBusTrackDebug = findPreference<SwitchPreference>("key_intelligent_bus_track_debug")
+                if (booleanValue) {
+                    preferenceBusTrackDebug?.let {
+                        it.isChecked = true
+                        it.isEnabled = true
+                    }
+                } else {
+                    preferenceBusTrackDebug?.let {
+                        it.isChecked = false
+                        it.isEnabled = false
+                    }
+                }
+            }
+            "key_intelligent_bus_track_debug" -> {
+                BusTrackerApplication.intelligentTrackerDebug.value = sharedPreferences!!.getBoolean(key, true).toString()
             }
             "key_ask_location_change" -> {
                 BusTrackerApplication.askLocationChange = sharedPreferences!!.getBoolean(key, true).toString()

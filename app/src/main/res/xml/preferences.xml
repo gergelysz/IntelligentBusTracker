@@ -30,6 +30,11 @@
             android:defaultValue="@string/intelligent_bus_track_default"
             android:key="@string/key_intelligent_bus_track"
             android:title="@string/title_intelligent_bus_track" />
+
+        <SwitchPreference
+            android:defaultValue="@string/intelligent_bus_track_debug_default"
+            android:key="@string/key_intelligent_bus_track_debug"
+            android:title="@string/title_intelligent_bus_track_debug" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Interface">

@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +20,7 @@ import com.example.intelligentbustracker.fragment.MapAssistFragment
 import com.example.intelligentbustracker.fragment.RoutingMapFragment
 import com.example.intelligentbustracker.fragment.SearchDialogFragment
 import com.example.intelligentbustracker.fragment.UserStatusFragment
+import com.example.intelligentbustracker.model.PossibleStationsAndBuses
 import com.example.intelligentbustracker.model.Station
 import com.example.intelligentbustracker.model.Status
 import com.example.intelligentbustracker.model.User
@@ -36,7 +38,10 @@ import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_maps.bottom_navigation_view
+import kotlinx.android.synthetic.main.activity_maps.map
 import kotlinx.android.synthetic.main.activity_maps.text_view_closest_station
+import kotlinx.android.synthetic.main.activity_maps.text_view_closest_stations
+import kotlinx.android.synthetic.main.activity_maps.text_view_possible_buses
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +50,7 @@ import kotlinx.coroutines.runBlocking
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragment.SearchDialogListener, GoogleMap.OnMapClickListener, UserStatusFragment.OnStatusChangeListener, MapAssistFragment.OnMapPositionClickListener {
 
@@ -74,8 +80,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
             val binder = p1 as LocationService.LocalBinder
             mService = binder.service
             mBound = true
-            if (BusTrackerApplication.intelligentTracker.value.toBoolean() && !Common.requestingLocationUpdates(this@MapsActivity)) {
-                mService?.requestLocationUpdates()
+            if (!Common.requestingLocationUpdates(this@MapsActivity)) {
+                if (BusTrackerApplication.intelligentTracker.value.toBoolean()) {
+                    mService?.requestLocationUpdates()
+                }
+            } else {
+                mService?.let {
+                    if (!it.running) {
+                        mService?.requestLocationUpdates()
+                    }
+                }
             }
         }
 
@@ -133,6 +147,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
         usersList.value = users
     }
 
+    @Subscribe(sticky = true, threadMode = ThreadMode.MAIN)
+    fun onPossibleStationsAndBusesRetrieve(stationsAndBuses: PossibleStationsAndBuses) {
+        text_view_closest_stations.text = this@MapsActivity.getString(R.string.closest_stations_s, stationsAndBuses.stations)
+        text_view_possible_buses.text = this@MapsActivity.getString(R.string.possible_buses_s, stationsAndBuses.buses)
+    }
+
     private fun updateClosestStationTextView(location: LatLng, closestStationName: String) {
         val closestStationNew = GeneralUtils.getClosestStation(location)
         if (closestStationName != closestStationNew.name) {
@@ -186,6 +206,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
 
         text_view_closest_station.text = this@MapsActivity.getString(R.string.closest_station, "Not found")
 
+        text_view_closest_stations.text = this@MapsActivity.getString(R.string.closest_stations_s, "Not moving, no data found")
+        text_view_possible_buses.text = this@MapsActivity.getString(R.string.possible_buses_s, "Not moving, no data found")
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
@@ -219,6 +242,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
             }
         })
 
+        BusTrackerApplication.intelligentTrackerDebug.observe(this@MapsActivity, { intelligentTrackerDebug ->
+            if (intelligentTrackerDebug.toBoolean()) {
+                text_view_closest_stations.visibility = View.VISIBLE
+                text_view_possible_buses.visibility = View.VISIBLE
+                map below text_view_possible_buses
+
+            } else {
+                text_view_closest_stations.visibility = View.INVISIBLE
+                text_view_possible_buses.visibility = View.INVISIBLE
+                map below text_view_closest_station
+            }
+        })
+
         bottom_navigation_view.setOnNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
                 /** Search for a station, opens SearchDialog Fragment */
@@ -247,6 +283,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
             }
             true
         }
+    }
+
+    /**
+     * Utility method for positioning Views
+     */
+    private infix fun View.below(view: View) {
+        (this.layoutParams as? RelativeLayout.LayoutParams)?.addRule(RelativeLayout.BELOW, view.id)
     }
 
     /**
@@ -433,7 +476,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
         super.onStart()
         if (!mBound) {
             bindService(Intent(this@MapsActivity, LocationService::class.java), mServiceConnection, Context.BIND_AUTO_CREATE)
-            mBound = true
         }
         EventBus.getDefault().register(this)
     }

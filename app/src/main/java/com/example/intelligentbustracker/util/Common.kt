@@ -8,7 +8,7 @@ import java.util.Date
 
 object Common {
 
-    const val KEY_REQUEST_LOCATION_UPDATE = "requesting_location_update"
+    private const val KEY_REQUEST_LOCATION_UPDATE = "requesting_location_update"
 
     fun getLocationText(location: Location?): String {
         return if (location == null)

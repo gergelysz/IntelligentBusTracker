@@ -23,8 +23,12 @@ class RoutingUtil {
             val busesWithStationsFrom = GeneralUtils.getBusesWithGivenStations(closestStationsToCurrentPosition)
             val busesWithStationsTo = GeneralUtils.getBusesWithGivenStations(closestStationsToDestinationPosition)
 
-            val resultingBuses = getRoutesFromStationsToStations(closestStationsToCurrentPosition, closestStationsToDestinationPosition, 3, busesWithStationsFrom, busesWithStationsTo)
-            return resultingBuses
+            if (closestStationsToCurrentPosition[0] == closestStationsToDestinationPosition[0]) {
+                return listOf<ArrayList<BusResult>>()
+            } else {
+                val resultingBuses = getRoutesFromStationsToStations(closestStationsToCurrentPosition, closestStationsToDestinationPosition, 3, busesWithStationsFrom, busesWithStationsTo)
+                return resultingBuses
+            }
         }
 
         //        private fun getRoutesFromStationsToStations(closestStationsToCurrentPosition: List<Station>, closestStationsToDestinationPosition: List<Station>, numberOfSuggestedBuses: Int, listOfBuses: List<Bus>): List<BusToStation> {

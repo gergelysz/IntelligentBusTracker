@@ -94,6 +94,8 @@ class MapUtils {
          * Initial setup of map.
          */
         fun setupMap(mMap: GoogleMap, context: Context, themeString: String) {
+            mMap.uiSettings.isTiltGesturesEnabled = false
+            mMap.uiSettings.isMapToolbarEnabled = false
             mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(context, context.resources.getIdentifier(themeString, "raw", context.packageName)))
             mMap.setMaxZoomPreference(20F)
             mMap.setMinZoomPreference(12F)

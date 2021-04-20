@@ -99,6 +99,14 @@ class BusTrackerApplication : Application() {
                 return field
             }
 
+        var intelligentTrackerDebug: MutableLiveData<String> = MutableLiveData("true")
+            get() {
+                if (field.value!!.isEmpty()) {
+                    field.value = DataManager(getInstance()).getSettingValueString(getInstance().getString(R.string.key_intelligent_bus_track_debug))
+                }
+                return field
+            }
+
         var status: MutableLiveData<Status> = MutableLiveData(Status.WAITING_FOR_BUS)
 
         var askLocationChange: String = "true"
@@ -130,6 +138,7 @@ class BusTrackerApplication : Application() {
             updateAccuracy = dataManager.getSettingValueString(getString(R.string.key_location_update_accuracy))
             mapTheme.postValue(dataManager.getSettingValueString(getString(R.string.key_map_theme)))
             intelligentTracker.postValue(dataManager.getSettingValueString(getString(R.string.key_intelligent_bus_track)))
+            intelligentTrackerDebug.postValue(dataManager.getSettingValueString(getString(R.string.key_intelligent_bus_track_debug)))
             askLocationChange = dataManager.getSettingValueString(getString(R.string.key_ask_location_change))
 
             stations = try {

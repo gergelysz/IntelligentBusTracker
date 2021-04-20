@@ -21,6 +21,7 @@ import com.example.intelligentbustracker.BusTrackerApplication
 import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.activity.MapsActivity
 import com.example.intelligentbustracker.model.Bus
+import com.example.intelligentbustracker.model.PossibleStationsAndBuses
 import com.example.intelligentbustracker.model.Station
 import com.example.intelligentbustracker.model.Status
 import com.example.intelligentbustracker.model.User
@@ -221,13 +222,32 @@ class LocationService : Service() {
             Log.i(TAG, "processLocationDataWithIntelligentTracker: speed is higher than 5 km/h, user probably on bus")
             if (this@LocationService::closestStations.isInitialized) {
                 val stations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
-                if (stations.size >= closestStations.size && numberOfStations > 1) {
+                if (stations.size >= closestStations.size && numberOfStations > 2) {
                     numberOfStations -= 1
-                    closestStations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
+                    closestStations = stations
                 } else {
-                    if (stations.isEmpty() && numberOfStations < 5) {
-                        numberOfStations += 1
-                        closestStations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
+                    if (stations.isEmpty()) {
+                        if (numberOfStations < 5) {
+                            numberOfStations += 1
+                            closestStations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
+                        }
+                    } else {
+                        if (closestStations.size == 2 && stations.size == 2 && closestStations[0] != stations[0]) {
+                            if (closestStations[0] == stations[0]) {
+                                if (closestStations[1] == stations[1]) {
+                                    closestStations = stations
+                                } else {
+                                    closestStations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
+                                }
+                            } else {
+                                closestStations = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentLatLng, BusTrackerApplication.stations, numberOfStations, maxDistance)
+                            }
+                        } else {
+                            if (numberOfStations > 2) {
+                                numberOfStations -= 1
+                            }
+                            closestStations = stations
+                        }
                     }
                 }
             } else {
@@ -238,6 +258,7 @@ class LocationService : Service() {
             busesWithStations = GeneralUtils.getBusesWithGivenStations(closestStations)
             val busesWithStationsLog = busesWithStations.joinToString(", ") { it.number.toString() }
             Log.i(TAG, "processLocationDataWithIntelligentTracker: possible buses = $busesWithStationsLog")
+            EventBus.getDefault().postSticky(PossibleStationsAndBuses(closestStationsLog, busesWithStationsLog))
         } else {
             BusTrackerApplication.status.value?.let {
                 if (it == Status.ON_BUS) {
@@ -350,7 +371,6 @@ class LocationService : Service() {
             running = true
             uploaded = false
             fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, mServiceHandler!!.looper)
-//            fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, Looper.myLooper())
         } catch (ex: SecurityException) {
             Common.setRequestingLocationUpdates(this, false)
             Log.e(TAG, "Lost location permission. $ex")

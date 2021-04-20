@@ -19,13 +19,37 @@
         android:textSize="16sp"
         android:theme="@style/FontGlobalRegular" />
 
+    <TextView
+        android:id="@+id/text_view_closest_stations"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/text_view_closest_station"
+        android:background="@color/peru"
+        android:backgroundTint="@color/peru"
+        android:text="@string/closest_stations_s"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:theme="@style/FontGlobalLight" />
+
+    <TextView
+        android:id="@+id/text_view_possible_buses"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/text_view_closest_stations"
+        android:background="@color/peru"
+        android:backgroundTint="@color/peru"
+        android:text="@string/possible_buses_s"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:theme="@style/FontGlobalLight" />
+
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/bottom_navigation_view"
-        android:layout_below="@id/text_view_closest_station"
+        android:layout_below="@id/text_view_possible_buses"
         tools:context=".activity.MapsActivity" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
