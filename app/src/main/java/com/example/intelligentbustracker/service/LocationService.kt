@@ -256,7 +256,7 @@ class LocationService : Service() {
             val closestStationsLog = closestStations.joinToString(", ") { it.name }
             Log.i(TAG, "processLocationDataWithIntelligentTracker: closest stations for based on current location = $closestStationsLog")
             busesWithStations = GeneralUtils.getBusesWithGivenStations(closestStations)
-            val busesWithStationsLog = busesWithStations.joinToString(", ") { it.number.toString() }
+            val busesWithStationsLog = busesWithStations.joinToString(", ") { it.number }
             Log.i(TAG, "processLocationDataWithIntelligentTracker: possible buses = $busesWithStationsLog")
             EventBus.getDefault().postSticky(PossibleStationsAndBuses(closestStationsLog, busesWithStationsLog))
         } else {

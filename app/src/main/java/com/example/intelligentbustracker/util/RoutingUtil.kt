@@ -14,9 +14,10 @@ class RoutingUtil {
     companion object {
         private const val TAG = "RoutingUtil"
 
+        /**
+         * Check for buses from current position to given position.
+         */
         fun initializeManualRouting(currentPosition: LatLng, destinationPosition: LatLng): List<List<BusResult>> {
-//        fun initializeManualRouting(currentPosition: LatLng, destinationPosition: LatLng): List<BusToStation> {
-            // TODO: Check their distance (check for buses if higher than 200m)
             val closestStationsToCurrentPosition = GeneralUtils.getNumberOfClosestStationsFromListOfStations(currentPosition, BusTrackerApplication.stations, 3, 1000.0)
             val closestStationsToDestinationPosition = GeneralUtils.getNumberOfClosestStationsFromListOfStations(destinationPosition, BusTrackerApplication.stations, 3, 1000.0)
 
@@ -31,7 +32,6 @@ class RoutingUtil {
             }
         }
 
-        //        private fun getRoutesFromStationsToStations(closestStationsToCurrentPosition: List<Station>, closestStationsToDestinationPosition: List<Station>, numberOfSuggestedBuses: Int, listOfBuses: List<Bus>): List<BusToStation> {
         private fun getRoutesFromStationsToStations(
             closestStationsToCurrentPosition: List<Station>,
             closestStationsToDestinationPosition: List<Station>,
@@ -44,7 +44,6 @@ class RoutingUtil {
                 for (stationTo in closestStationsToDestinationPosition) {
                     val buses = getBusesFromStationToStation(stationFrom, stationTo, busesWithStationsFrom, busesWithStationsTo)
                     buses.forEach { bus -> busResults.add(bus) }
-//                    buses.forEach { bus -> if (!busResultInBusResults(busResults, bus)) busResults.add(bus) }
                     if (busResults.size >= numberOfSuggestedBuses) {
                         return busResults
                     }
@@ -69,11 +68,6 @@ class RoutingUtil {
             if (busResults[0][0].bus.number == busResult[0].bus.number) {
                 return true
             }
-//            for (busResultItem in busResults) {
-//                if (busResultItem[0].bus.number == busResult[0].bus.number) {
-//                    return true
-//                }
-//            }
             return false
         }
 
@@ -91,7 +85,6 @@ class RoutingUtil {
                     Log.e(TAG, "getBusesWithStationToStation: bus ${bus.number} doesn't have a direct transit from $fromStation to $toStation")
                     val changeBuses = getBusWithCommonStation(bus, fromStation, toStation, busesWithStationsTo.filter { x -> x.number != bus.number })
                     listOfBusesWithGivenStation.addAll(changeBuses)
-//                    changeBuses?.let { listOfBusesWithGivenStation.add(it) }
                 }
             }
             return listOfBusesWithGivenStation
@@ -102,12 +95,11 @@ class RoutingUtil {
          * station with the passed currentBus parameter.
          */
         private fun getBusWithCommonStation(currentBus: Bus, fromStation: Station, toStation: Station, busesWithStationsTo: List<Bus>): List<List<BusResult>> {
-//        private fun getBusWithCommonStation(currentBus: Bus, fromStation: Station, toStation: Station, busesWithStationsTo: List<Bus>): List<BusResult>? {
             val busesWithCommonStation = arrayListOf<List<BusResult>>()
-            val directionCurrentBus = currentBus.getDirectionForStation(fromStation.name)
+            val directionCurrentBus = currentBus.getDirectionForFromToStation(fromStation.name, toStation.name)
             directionCurrentBus?.let { currentBusDirection ->
                 for (bus in busesWithStationsTo) {
-                    val direction = bus.getDirectionForStation(toStation.name)
+                    val direction = bus.getDirectionForToStation(toStation.name)
                     direction?.let {
                         val commonStation: String = if (it == Direction.DIRECTION_1) {
                             val stations = ArrayList(bus.scheduleRoutes.scheduleRoute1)
@@ -119,11 +111,7 @@ class RoutingUtil {
                         /** Found a common station */
                         if (commonStation.isNotEmpty() && commonStation != fromStation.name && commonStation != toStation.name) {
                             busesWithCommonStation.add(listOf(BusResult(currentBus, currentBusDirection, fromStation.name, commonStation), BusResult(bus, it, commonStation, toStation.name)))
-//                        return listOf(BusResult(currentBus, directionCurrentBus, fromStation.name, commonStation), BusResult(bus, it, commonStation, toStation.name))
                         }
-//                    else {
-//                        return null
-//                    }
                     }
                 }
             }
@@ -139,7 +127,6 @@ class RoutingUtil {
             scheduleRoute.removeLast()
             for (scheduleStation in scheduleRoute) {
                 if (currentBus.containsStationWithDirection(scheduleStation, currentBusDirection) && scheduleStation != toStationName) {
-//                if (currentBus.containsStation(scheduleStation) && scheduleStation != toStationName) {
                     lastCommonStation = scheduleStation
                 }
             }

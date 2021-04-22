@@ -58,7 +58,7 @@ class ScheduleMapFragment : DialogFragment() {
         val rootView = inflater.inflate(R.layout.fragment_schedule_map, container, false)
         val mapFragment = childFragmentManager.findFragmentById(R.id.fragment_schedule_map_container) as SupportMapFragment
 
-        val busNumber: Int = arguments?.getInt("bus_number") ?: 0
+        val busNumber: String = arguments?.getString("bus_number") ?: "0"
 
         mapFragment.getMapAsync { googleMap ->
             mMap = googleMap
@@ -68,7 +68,7 @@ class ScheduleMapFragment : DialogFragment() {
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 10F))
             }
 
-            if (busNumber != 0) {
+            if (busNumber != "0") {
                 val selectedBus: Bus? = BusTrackerApplication.buses.firstOrNull { x -> busNumber == x.number }
                 selectedBus?.let {
                     Toast.makeText(scheduleMapContext, "Selected bus with number ${selectedBus.number}", Toast.LENGTH_SHORT).show()

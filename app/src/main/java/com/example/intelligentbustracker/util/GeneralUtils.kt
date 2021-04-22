@@ -157,7 +157,7 @@ class GeneralUtils {
             return duration.humanReadable
         }
 
-        fun getEarliestNLeaveTimesForBusTowardsStation(busNumber: Int, stationName: String, numberOfLeaveTimes: Int): List<LeavingHour> {
+        fun getEarliestNLeaveTimesForBusTowardsStation(busNumber: String, stationName: String, numberOfLeaveTimes: Int): List<LeavingHour> {
             val bus = BusTrackerApplication.buses.firstOrNull { x -> x.number == busNumber }
             val leaveTimes = ArrayList<LeavingHour>()
             bus?.let {
@@ -186,7 +186,7 @@ class GeneralUtils {
             return leaveTimes
         }
 
-        fun getEarliestLeaveTimeForBusTowardsStation(busNumber: Int, stationName: String): LeavingHour? {
+        fun getEarliestLeaveTimeForBusTowardsStation(busNumber: String, stationName: String): LeavingHour? {
             val bus = BusTrackerApplication.buses.firstOrNull { x -> x.number == busNumber }
             bus?.let {
                 val currentTime: String = getHourAndMinuteString()
@@ -270,17 +270,6 @@ class GeneralUtils {
             return NOT_FOUND
         }
 
-        fun getBusesWithDirectionForStation(stationName: String, buses: List<Bus>): Map<Bus, Direction> {
-            val listOfBusesWithGivenStation: MutableMap<Bus, Direction> = HashMap()
-            for (bus in buses) {
-                val direction: Direction? = bus.getDirectionForStation(stationName)
-                direction?.let {
-                    listOfBusesWithGivenStation.put(bus, direction)
-                }
-            }
-            return listOfBusesWithGivenStation
-        }
-
         /**
          * Returns a list of Bus objects containing any of
          * the stations listed in the 'stations' parameter.
@@ -309,14 +298,14 @@ class GeneralUtils {
             return listOfBusesWithGivenStation
         }
 
-        fun getBusNumbersWithGivenStation(stationName: String): IntArray {
-            val listOfBusesWithGivenStation: MutableList<Int> = ArrayList()
+        fun getBusNumbersWithGivenStation(stationName: String): List<String> {
+            val listOfBusesWithGivenStation: MutableList<String> = ArrayList()
             for (bus in BusTrackerApplication.buses) {
                 if (bus.containsStation(stationName)) {
                     listOfBusesWithGivenStation.add(bus.number)
                 }
             }
-            return listOfBusesWithGivenStation.toIntArray()
+            return listOfBusesWithGivenStation
         }
 
         fun populateListWithMatchingStations(stations: MutableList<Station>, scheduleRoute: ArrayList<String>) {
@@ -409,7 +398,7 @@ class GeneralUtils {
             return generatedStations
         }
 
-        fun generateBusListFromBusNumbers(buses: List<Bus>, busNumbers: IntArray): List<Bus> {
+        fun generateBusListFromBusNumbers(buses: List<Bus>, busNumbers: List<String>): List<Bus> {
             val generatedBuses: MutableList<Bus> = ArrayList()
             for (busNumber in busNumbers) {
                 val bus = buses.firstOrNull { x -> x.number == busNumber }
@@ -424,7 +413,7 @@ class GeneralUtils {
          * Returns the schedule for a bus with
          * it's number passed as parameter.
          */
-        fun getScheduleFromBusNumber(busNumber: Int, schedules: List<Schedule>): Schedule? {
+        fun getScheduleFromBusNumber(busNumber: String, schedules: List<Schedule>): Schedule? {
             return schedules.firstOrNull { x -> x.busNumber == busNumber }
         }
     }

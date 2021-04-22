@@ -39,7 +39,7 @@ class SchedulesActivity : AppCompatActivity(), ScheduleRecyclerAdapter.OnSchedul
         val clickedItem: Schedule = BusTrackerApplication.schedules[position]
         val scheduleMapFragment = ScheduleMapFragment()
         val bundle = Bundle()
-        bundle.putInt("bus_number", clickedItem.busNumber)
+        bundle.putString("bus_number", clickedItem.busNumber)
         scheduleMapFragment.arguments = bundle
         scheduleMapFragment.show(supportFragmentManager, "Schedule Map")
         scheduleAdapter.notifyItemChanged(position)

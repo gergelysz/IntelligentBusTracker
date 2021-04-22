@@ -28,6 +28,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import java.util.stream.Collectors
 
 class MapUtils {
 
@@ -291,10 +292,13 @@ class MapUtils {
             val markerId: Int = getMarkerIdForStations()
             val stationsMarkers = ArrayList<MarkerOptions>()
             for (station in stations) {
+                val busesWithStation = GeneralUtils.getBusesWithGivenStation(station).stream().map { x -> x.number }.collect(Collectors.toList())
+                val snippetData = "Related buses: " + busesWithStation.joinToString(", ")
                 stationsMarkers.add(
                     MarkerOptions()
                         .position(LatLng(station.latitude, station.longitude))
                         .title(station.name)
+                        .snippet(snippetData)
                         .icon(bitmapFromVector(context, markerId))
                 )
             }

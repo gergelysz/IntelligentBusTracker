@@ -67,7 +67,7 @@ class DataManager(private val context: Context) {
                 val scheduleRoute2 = ArrayList<String>()
                 scheduleRoute1.addAll(csvRecord[1].split(';'))
                 scheduleRoute2.addAll(csvRecord[2].split(';'))
-                buses.add(Bus(csvRecord[0].toInt(), ScheduleRoutes(scheduleRoute1, scheduleRoute2)))
+                buses.add(Bus(csvRecord[0], ScheduleRoutes(scheduleRoute1, scheduleRoute2)))
             }
             Log.i(TAG, "initializeBuses: done read")
             return buses
@@ -99,7 +99,7 @@ class DataManager(private val context: Context) {
                 scheduleRoute2.addAll(csvRecord[2].split(';'))
                 schedules.add(
                     Schedule(
-                        csvRecord[0].toInt(),
+                        csvRecord[0],
                         LeavingHours(
                             csvRecord[1],
                             csvRecord[2].split(';') as ArrayList<String>,
