@@ -104,7 +104,7 @@ class UserStatusFragment(private val listener: OnStatusChangeListener) : DialogF
             dismiss()
         }
 
-        busNumbers = BusTrackerApplication.buses.stream().map { x -> x.number.toString() }.collect(Collectors.toList())
+        busNumbers = BusTrackerApplication.buses.stream().map { x -> x.number }.collect(Collectors.toList())
         val adapter: ArrayAdapter<String> = ArrayAdapter(requireActivity(), android.R.layout.simple_list_item_1, busNumbers)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
 

@@ -1,20 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/popup_style"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:weightSum="7"
+    tools:context=".fragment.RoutingMapFragment">
 
-    <!--    <androidx.fragment.app.FragmentContainerView-->
-    <!--        android:id="@+id/fragment_route_dialog_map_container"-->
-    <!--        android:name="com.google.android.gms.maps.SupportMapFragment"-->
-    <!--        android:layout_width="match_parent"-->
-    <!--        android:layout_height="0dp"-->
-    <!--        android:layout_weight="2" />-->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_route_dialog_map_container"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="5" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/route_dialog_recycler_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="2" />
 
 </LinearLayout>

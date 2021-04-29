@@ -61,7 +61,7 @@
     <!-- Intelligent Bus Track Debug -->
     <string name="key_intelligent_bus_track_debug">key_intelligent_bus_track_debug</string>
     <string name="title_intelligent_bus_track_debug">Show debug view with closest stations and possible buses</string>
-    <string name="intelligent_bus_track_debug_default">true</string>
+    <string name="intelligent_bus_track_debug_default">false</string>
 
     <!-- Map themes -->
     <string name="map_theme">Map theme</string>

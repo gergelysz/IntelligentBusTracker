@@ -74,12 +74,12 @@ class RouteRecyclerAdapter(private val listener: OnRouteItemClickListener) : Rec
      */
     private fun initValues(busResult: List<BusResult>) {
         if (busResult.size == 1) {
-            busNumberText = busResult[0].bus.number.toString()
+            busNumberText = busResult[0].bus.number
             busTitleText = "${busResult[0].stationUp} - ${busResult[0].stationDown}"
             val hours = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[0].bus.number, busResult[0].stationDown, 3)
             busDetailsText = hours.joinToString(", ") { x -> x.hour }
         } else if (busResult.size > 1) {
-            busNumberText = busResult[0].bus.number.toString() + "\n➜\n" + busResult[1].bus.number.toString()
+            busNumberText = busResult[0].bus.number + "\n➜\n" + busResult[1].bus.number
             busTitleText = "${busResult[0].stationUp} - ${busResult[0].stationDown} ➜ ${busResult[1].stationUp} - ${busResult[1].stationDown}"
             val hoursFirst = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[0].bus.number, busResult[0].stationDown, 3)
             val hoursSecond = GeneralUtils.getEarliestNLeaveTimesForBusTowardsStation(busResult[1].bus.number, busResult[1].stationDown, 3)

@@ -30,6 +30,7 @@ import com.example.intelligentbustracker.util.Common
 import com.example.intelligentbustracker.util.Constants
 import com.example.intelligentbustracker.util.GeneralUtils
 import com.example.intelligentbustracker.util.IntelligentTrackerUtils
+import com.example.intelligentbustracker.util.MapUtils
 import com.google.android.gms.location.ActivityRecognitionClient
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -37,10 +38,13 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObject
+import com.google.firebase.ktx.Firebase
 import java.util.Timer
 import java.util.TimerTask
 import java.util.stream.Collectors
@@ -65,6 +69,7 @@ class LocationService : Service() {
     }
 
     private lateinit var client: ActivityRecognitionClient
+    private lateinit var auth: FirebaseAuth
 
     private lateinit var busesWithStations: List<Bus>
     private lateinit var closestStations: List<Station>
@@ -145,13 +150,15 @@ class LocationService : Service() {
     private fun uploadUser(user: User) = CoroutineScope(Dispatchers.IO).launch {
         try {
             usersCollectionRef?.let {
-                currentUserDocumentReference = it.add(user).await()
-                currentUserDocumentReference?.let { currentUserRef ->
-                    user.id = currentUserRef.id
-                    withContext(Dispatchers.Main) {
-                        uploaded = true
-                        EventBus.getDefault().postSticky(user)
-                        Log.i(TAG, "uploadUser: Successfully uploaded user data.")
+                currentUser?.let { currentId ->
+                    currentUserDocumentReference = it.document(currentId.id)
+                    currentUserDocumentReference?.let { currentUserRef ->
+                        currentUserRef.set(user).addOnCompleteListener {
+                            uploaded = true
+                            EventBus.getDefault().postSticky(user)
+                            Log.i(TAG, "uploadUser: Successfully uploaded user data.")
+
+                        }
                     }
                 }
             }
@@ -162,7 +169,6 @@ class LocationService : Service() {
         }
     }
 
-    //    private fun updateUser(latitude: Double, longitude: Double) = CoroutineScope(Dispatchers.IO).launch {
     private fun updateUser(user: User) = CoroutineScope(Dispatchers.IO).launch {
         try {
             currentUserDocumentReference?.let {
@@ -294,9 +300,6 @@ class LocationService : Service() {
                             it.longitude = myLocation.longitude
                             updateUser(it)
                         }
-                    } ?: run {
-                        currentUser = User(0, myLocation.latitude, myLocation.longitude, 0)
-                        uploadUser(currentUser!!)
                     }
                 }
                 runBlocking {
@@ -343,8 +346,8 @@ class LocationService : Service() {
                     }
                 }
             },
-            2000,
-            5000
+            2000, // Delay for start
+            BusTrackerApplication.updateInterval.toLong() // Same running interval as requesting other user's data
         )
     }
 
@@ -364,6 +367,24 @@ class LocationService : Service() {
         mChangingConfiguration = true
     }
 
+    private fun signIn() {
+        auth.signInAnonymously()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    Log.d(TAG, "signInAnonymously:success")
+                    auth.currentUser?.let { current ->
+                        currentUser = User(0, MapUtils.LATLNG_DEFAULT_TG_MURES.latitude, MapUtils.LATLNG_DEFAULT_TG_MURES.longitude, 0).withId(current.uid)
+                        uploadUser(currentUser!!)
+                    }
+                } else {
+                    // If sign in fails, display a message to the user.
+                    Log.w(TAG, "signInAnonymously:failure", task.exception)
+                    Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
     fun requestLocationUpdates() {
         try {
             Common.setRequestingLocationUpdates(this, true)
@@ -371,6 +392,18 @@ class LocationService : Service() {
             running = true
             uploaded = false
             fusedLocationProviderClient!!.requestLocationUpdates(locationRequest!!, locationCallback!!, mServiceHandler!!.looper)
+            // Authenticate
+            auth = Firebase.auth
+            // Check if signed in
+            auth.currentUser?.let {
+                // If signed in
+                auth.signOut()
+                signIn()
+            } ?: run {
+                // If not signed in
+                signIn()
+            }
+
         } catch (ex: SecurityException) {
             Common.setRequestingLocationUpdates(this, false)
             Log.e(TAG, "Lost location permission. $ex")
@@ -386,6 +419,7 @@ class LocationService : Service() {
                 currentUserDocumentReference?.delete()?.addOnSuccessListener {
                     currentUserDocumentReference = null
                     currentUser = null
+                    auth.signOut()
                     stopSelf()
                 }?.addOnFailureListener {
                     Toast.makeText(this@LocationService, "Failed to remove user reference from Firestore.", Toast.LENGTH_LONG).show()

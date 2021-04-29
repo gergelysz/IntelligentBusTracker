@@ -59,7 +59,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                 }
             }
             "key_intelligent_bus_track_debug" -> {
-                BusTrackerApplication.intelligentTrackerDebug.value = sharedPreferences!!.getBoolean(key, true).toString()
+                BusTrackerApplication.intelligentTrackerDebug.value = sharedPreferences!!.getBoolean(key, false).toString()
             }
             "key_ask_location_change" -> {
                 BusTrackerApplication.askLocationChange = sharedPreferences!!.getBoolean(key, true).toString()

@@ -27,7 +27,7 @@ class RoutingUtil {
             if (closestStationsToCurrentPosition[0] == closestStationsToDestinationPosition[0]) {
                 return listOf<ArrayList<BusResult>>()
             } else {
-                val resultingBuses = getRoutesFromStationsToStations(closestStationsToCurrentPosition, closestStationsToDestinationPosition, 3, busesWithStationsFrom, busesWithStationsTo)
+                val resultingBuses = getRoutesFromStationsToStations(closestStationsToCurrentPosition, closestStationsToDestinationPosition, 3, busesWithStationsFrom, busesWithStationsTo, currentPosition, destinationPosition)
                 return resultingBuses
             }
         }
@@ -37,13 +37,20 @@ class RoutingUtil {
             closestStationsToDestinationPosition: List<Station>,
             numberOfSuggestedBuses: Int,
             busesWithStationsFrom: List<Bus>,
-            busesWithStationsTo: List<Bus>
+            busesWithStationsTo: List<Bus>,
+            currentPosition: LatLng,
+            destinationPosition: LatLng
         ): List<List<BusResult>> {
             val busResults = arrayListOf<List<BusResult>>()
             for (stationFrom in closestStationsToCurrentPosition) {
                 for (stationTo in closestStationsToDestinationPosition) {
-                    val buses = getBusesFromStationToStation(stationFrom, stationTo, busesWithStationsFrom, busesWithStationsTo)
-                    buses.forEach { bus -> busResults.add(bus) }
+                    val buses = getBusesFromStationToStation(stationFrom, stationTo, busesWithStationsFrom, busesWithStationsTo, currentPosition, destinationPosition)
+//                    buses.forEach { bus -> busResults.add(bus) }
+                    buses.forEach { bus ->
+                        if (!busResults.containsAll(buses)) {
+                            busResults.add(bus)
+                        }
+                    }
                     if (busResults.size >= numberOfSuggestedBuses) {
                         return busResults
                     }
@@ -52,38 +59,19 @@ class RoutingUtil {
             return busResults
         }
 
-        private fun busResultInBusResults(busResults: List<List<BusResult>>, busResult: List<BusResult>): Boolean {
-            busResults.forEach { busResultItem ->
-                if (busResultItem[0].bus.number == busResult[0].bus.number) {
-                    return true
-                }
-            }
-            return false
-        }
-
-        private fun busResultAlreadyExists(busResults: List<List<BusResult>>, busResult: List<BusResult>): Boolean {
-            if (busResults.isEmpty() || busResult.isEmpty()) {
-                return false
-            }
-            if (busResults[0][0].bus.number == busResult[0].bus.number) {
-                return true
-            }
-            return false
-        }
-
         /**
          * Returns list of buses containing the fromStation and toStation.
          */
-        private fun getBusesFromStationToStation(fromStation: Station, toStation: Station, busesWithStationsFrom: List<Bus>, busesWithStationsTo: List<Bus>): List<List<BusResult>> {
+        private fun getBusesFromStationToStation(fromStation: Station, toStation: Station, busesWithStationsFrom: List<Bus>, busesWithStationsTo: List<Bus>, currentPosition: LatLng, destinationPosition: LatLng): List<List<BusResult>> {
             val listOfBusesWithGivenStation = arrayListOf<List<BusResult>>()
             for (bus in busesWithStationsFrom) {
                 val direction = bus.scheduleRoutes.getStationToStationDirection(fromStation.name, toStation.name)
                 direction?.let {
                     /** Direct bus */
-                    listOfBusesWithGivenStation.add(listOf(BusResult(bus, it, fromStation.name, toStation.name)))
+                    listOfBusesWithGivenStation.add(listOf(BusResult(bus, it, fromStation.name, toStation.name, currentPosition, destinationPosition)))
                 } ?: run {
                     Log.e(TAG, "getBusesWithStationToStation: bus ${bus.number} doesn't have a direct transit from $fromStation to $toStation")
-                    val changeBuses = getBusWithCommonStation(bus, fromStation, toStation, busesWithStationsTo.filter { x -> x.number != bus.number })
+                    val changeBuses = getBusWithCommonStation(bus, fromStation, toStation, busesWithStationsTo.filter { x -> x.number != bus.number }, currentPosition, destinationPosition)
                     listOfBusesWithGivenStation.addAll(changeBuses)
                 }
             }
@@ -94,7 +82,7 @@ class RoutingUtil {
          * Returns a bus from a list of buses with a common
          * station with the passed currentBus parameter.
          */
-        private fun getBusWithCommonStation(currentBus: Bus, fromStation: Station, toStation: Station, busesWithStationsTo: List<Bus>): List<List<BusResult>> {
+        private fun getBusWithCommonStation(currentBus: Bus, fromStation: Station, toStation: Station, busesWithStationsTo: List<Bus>, currentPosition: LatLng, destinationPosition: LatLng): List<List<BusResult>> {
             val busesWithCommonStation = arrayListOf<List<BusResult>>()
             val directionCurrentBus = currentBus.getDirectionForFromToStation(fromStation.name, toStation.name)
             directionCurrentBus?.let { currentBusDirection ->
@@ -110,7 +98,12 @@ class RoutingUtil {
                         }
                         /** Found a common station */
                         if (commonStation.isNotEmpty() && commonStation != fromStation.name && commonStation != toStation.name) {
-                            busesWithCommonStation.add(listOf(BusResult(currentBus, currentBusDirection, fromStation.name, commonStation), BusResult(bus, it, commonStation, toStation.name)))
+                            busesWithCommonStation.add(
+                                listOf(
+                                    BusResult(currentBus, currentBusDirection, fromStation.name, commonStation, currentPosition, destinationPosition),
+                                    BusResult(bus, it, commonStation, toStation.name, currentPosition, destinationPosition)
+                                )
+                            )
                         }
                     }
                 }

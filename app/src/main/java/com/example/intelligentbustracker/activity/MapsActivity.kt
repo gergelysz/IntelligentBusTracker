@@ -51,7 +51,6 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
-
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragment.SearchDialogListener, GoogleMap.OnMapClickListener, UserStatusFragment.OnStatusChangeListener, MapAssistFragment.OnMapPositionClickListener {
 
     private lateinit var mMap: GoogleMap
@@ -380,14 +379,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
     override fun searchedForStation(station: Station) {
         chosenStation = station
 
-        currentUserMarker?.let {
-            if (BusTrackerApplication.askLocationChange.toBoolean()) {
-                showLocationChangeDialog(LatLng(chosenStation.latitude, chosenStation.longitude), LatLng(it.position.latitude, it.position.longitude))
-            } else {
-                initializeRouting(LatLng(it.position.latitude, it.position.longitude), LatLng(station.latitude, station.longitude))
+        if (!Common.requestingLocationUpdates(this@MapsActivity)) {
+            currentUserMarker?.let {
+                if (BusTrackerApplication.askLocationChange.toBoolean()) {
+                    showLocationChangeDialog(LatLng(chosenStation.latitude, chosenStation.longitude), LatLng(it.position.latitude, it.position.longitude))
+                } else {
+                    initializeRouting(LatLng(it.position.latitude, it.position.longitude), LatLng(station.latitude, station.longitude))
+                }
+            } ?: run {
+                initializeMapAssistForManualCurrentLocation()
             }
-        } ?: run {
-            initializeMapAssistForManualCurrentLocation()
+        } else {
+            currentUserMarker?.let {
+                initializeRouting(LatLng(it.position.latitude, it.position.longitude), LatLng(chosenStation.latitude, chosenStation.longitude))
+            }
         }
     }
 
@@ -421,14 +426,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, SearchDialogFragme
      * to be used as current location.
      */
     override fun onMapClick(position: LatLng) {
-        currentUserMarker?.let {
-            if (BusTrackerApplication.askLocationChange.toBoolean()) {
-                showLocationChangeDialog(position, LatLng(it.position.latitude, it.position.longitude))
-            } else {
+        if (!Common.requestingLocationUpdates(this@MapsActivity)) {
+            currentUserMarker?.let {
+                if (BusTrackerApplication.askLocationChange.toBoolean()) {
+                    showLocationChangeDialog(position, LatLng(it.position.latitude, it.position.longitude))
+                } else {
+                    initializeRouting(LatLng(it.position.latitude, it.position.longitude), position)
+                }
+            } ?: run {
+                initializeMapAssistForManualCurrentLocation()
+            }
+        } else {
+            currentUserMarker?.let {
                 initializeRouting(LatLng(it.position.latitude, it.position.longitude), position)
             }
-        } ?: run {
-            initializeMapAssistForManualCurrentLocation()
         }
     }
 

@@ -38,6 +38,8 @@ class MapUtils {
         private val DARK_MAPS = listOf("map_style_dark", "map_style_night")
         private val LIGHT_MAPS = listOf("map_style_standard", "map_style_retro")
 
+        val LATLNG_DEFAULT_TG_MURES = LatLng(46.539892, 24.558334)
+
         fun animateMarker(marker: Marker, toPosition: LatLng, projection: Projection) {
             val handler = Handler()
             val start = SystemClock.uptimeMillis()
@@ -100,7 +102,7 @@ class MapUtils {
             mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(context, context.resources.getIdentifier(themeString, "raw", context.packageName)))
             mMap.setMaxZoomPreference(20F)
             mMap.setMinZoomPreference(12F)
-            val tgMuresDefault = LatLng(46.539892, 24.558334)
+            val tgMuresDefault = LATLNG_DEFAULT_TG_MURES
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(tgMuresDefault, 15F))
         }
 
@@ -348,7 +350,7 @@ class MapUtils {
          * Method to return WayPoints (list of LatLng)
          * from given list of Stations.
          */
-        private fun getWayPointsForStations(stations: List<Station>): List<LatLng> {
+        fun getWayPointsForStations(stations: List<Station>): List<LatLng> {
             val wayPoints = arrayListOf<LatLng>()
             for (station in stations) {
                 wayPoints.add(LatLng(station.latitude, station.longitude))

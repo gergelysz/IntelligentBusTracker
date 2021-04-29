@@ -148,7 +148,7 @@ class DataManager(private val context: Context) {
                     sh.getBoolean(key, true).toString()
                 }
                 "key_intelligent_bus_track_debug" -> {
-                    sh.getBoolean(key, true).toString()
+                    sh.getBoolean(key, false).toString()
                 }
                 "key_ask_location_change" -> {
                     sh.getBoolean(key, true).toString()

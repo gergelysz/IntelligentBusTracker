@@ -8,24 +8,11 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.RelativeLayout
 import com.example.intelligentbustracker.BusTrackerApplication
-import com.example.intelligentbustracker.R
 import com.example.intelligentbustracker.model.Bus
-import com.example.intelligentbustracker.model.Direction
 import com.example.intelligentbustracker.model.LeavingHour
 import com.example.intelligentbustracker.model.LeavingHours
-import com.example.intelligentbustracker.model.Schedule
 import com.example.intelligentbustracker.model.Station
-import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Polyline
-import com.google.android.gms.maps.model.PolylineOptions
-import com.google.maps.DirectionsApi
-import com.google.maps.GeoApiContext
-import com.google.maps.android.PolyUtil
-import com.google.maps.model.DirectionsLeg
-import com.google.maps.model.DirectionsResult
-import com.google.maps.model.DirectionsRoute
-import com.google.maps.model.Duration
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -79,19 +66,6 @@ class GeneralUtils {
             return map
         }
 
-        fun getClosestStationFromListOfStations(currentLatLng: LatLng, stations: List<Station>): Station {
-            var smallestDistance: Double = getDistance(currentLatLng.latitude, currentLatLng.longitude, stations[0].latitude, stations[0].longitude)
-            var closestStation: Station = stations[0]
-            for (station in stations) {
-                val distanceHaversineLocation = getDistance(currentLatLng.latitude, currentLatLng.longitude, station.latitude, station.longitude)
-                if (distanceHaversineLocation < smallestDistance) {
-                    smallestDistance = distanceHaversineLocation
-                    closestStation = station
-                }
-            }
-            return closestStation
-        }
-
         /**
          * Returns the closest Station object to
          * the given LatLng location parameter.
@@ -113,7 +87,7 @@ class GeneralUtils {
          * Calculates the distance between two points
          * based on the Haversine formula.
          */
-        private fun getDistance(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double): Double {
+        fun getDistance(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double): Double {
             // The math module contains a function
             // named toRadians which converts from
             // degrees to radians.
@@ -132,29 +106,23 @@ class GeneralUtils {
             return c * EARTH_RADIUS_M
         }
 
-        fun addPolyline(results: DirectionsResult, mMap: GoogleMap): Polyline {
-            val decodedPath: List<LatLng> = PolyUtil.decode(results.routes[0].overviewPolyline.encodedPath)
-            return mMap.addPolyline(PolylineOptions().addAll(decodedPath))
-        }
+        fun getDistance(latLng1: LatLng, latLng2: LatLng): Double {
+            // The math module contains a function
+            // named toRadians which converts from
+            // degrees to radians.
+            val lat1 = Math.toRadians(latLng1.latitude)
+            val lon1 = Math.toRadians(latLng1.longitude)
+            val lat2 = Math.toRadians(latLng2.latitude)
+            val lon2 = Math.toRadians(latLng2.longitude)
 
-        fun getDurationForRoute(origin: LatLng, destination: LatLng, context: Context): String {
-            // We need a context to access the API
-            val geoApiContext: GeoApiContext = GeoApiContext.Builder()
-                .apiKey(context.getString(R.string.google_maps_key))
-                .build()
+            // Haversine formula
+            val dlon = lon2 - lon1
+            val dlat = lat2 - lat1
+            val a = (sin(dlat / 2).pow(2.0) + (cos(lat1) * cos(lat2) * sin(dlon / 2).pow(2.0)))
+            val c = 2 * asin(sqrt(a))
 
-            // Perform the actual request
-            val directionsResult: DirectionsResult = DirectionsApi.newRequest(geoApiContext)
-                .mode(com.google.maps.model.TravelMode.DRIVING)
-                .origin(origin.toString())
-                .destination(destination.toString())
-                .await()
-
-            // Parse the result
-            val route: DirectionsRoute = directionsResult.routes[0]
-            val leg: DirectionsLeg = route.legs[0]
-            val duration: Duration = leg.duration
-            return duration.humanReadable
+            // calculate the result
+            return c * EARTH_RADIUS_M
         }
 
         fun getEarliestNLeaveTimesForBusTowardsStation(busNumber: String, stationName: String, numberOfLeaveTimes: Int): List<LeavingHour> {
@@ -186,35 +154,13 @@ class GeneralUtils {
             return leaveTimes
         }
 
-        fun getEarliestLeaveTimeForBusTowardsStation(busNumber: String, stationName: String): LeavingHour? {
-            val bus = BusTrackerApplication.buses.firstOrNull { x -> x.number == busNumber }
-            bus?.let {
-                val currentTime: String = getHourAndMinuteString()
-                if (it.scheduleRoutes.scheduleRoute1.contains(stationName) && it.scheduleRoutes.scheduleRoute1.indexOf(stationName) > 0) {
-                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
-                    matchingSchedule?.let { schedule ->
-                        val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours1, currentTime)
-                        return LeavingHour(schedule.leavingHours1.fromStation, leavingHour)
-                    }
-                } else if (it.scheduleRoutes.scheduleRoute2.contains(stationName) && it.scheduleRoutes.scheduleRoute2.indexOf(stationName) > 0) {
-                    val matchingSchedule = BusTrackerApplication.schedules.firstOrNull { x -> x.busNumber == it.number }
-                    matchingSchedule?.let { schedule ->
-                        val leavingHour: String = returnEarliestLeavingHourForSchedule(schedule.leavingHours2, currentTime)
-                        return LeavingHour(schedule.leavingHours2.fromStation, leavingHour)
-                    }
-                }
-                return null
-            }
-            return null
-        }
-
         /**
          * Return the earliest leaving hour from the getEarliestLeavingHour method
          * @see getEarliestLeavingHour
          * based on the type of the current day. If not found then returns
          * the first leaving hour of tomorrow based on the type of the day it'll be.
          */
-        private fun returnEarliestLeavingHourForSchedule(leavingHours: LeavingHours, currentTime: String): String {
+        fun returnEarliestLeavingHourForSchedule(leavingHours: LeavingHours, currentTime: String): String {
             val time: String
             when (getTodayDayType()) {
                 Calendar.SATURDAY -> {
@@ -298,24 +244,6 @@ class GeneralUtils {
             return listOfBusesWithGivenStation
         }
 
-        fun getBusNumbersWithGivenStation(stationName: String): List<String> {
-            val listOfBusesWithGivenStation: MutableList<String> = ArrayList()
-            for (bus in BusTrackerApplication.buses) {
-                if (bus.containsStation(stationName)) {
-                    listOfBusesWithGivenStation.add(bus.number)
-                }
-            }
-            return listOfBusesWithGivenStation
-        }
-
-        fun populateListWithMatchingStations(stations: MutableList<Station>, scheduleRoute: ArrayList<String>) {
-            for (station in BusTrackerApplication.stations) {
-                if (scheduleRoute.contains(station.name)) {
-                    stations.add(station)
-                }
-            }
-        }
-
         fun buildFullscreenDialog(context: Context, backgroundColor: Int): Dialog {
             // the content
             val root = RelativeLayout(context)
@@ -378,7 +306,7 @@ class GeneralUtils {
          * Returns the current time
          * in 24 hour format.
          */
-        private fun getHourAndMinuteString(): String {
+        fun getHourAndMinuteString(): String {
             val simpleDateFormat = SimpleDateFormat(PATTERN_TIME, Locale.getDefault())
             return simpleDateFormat.format(Date())
         }
@@ -396,25 +324,6 @@ class GeneralUtils {
                 }
             }
             return generatedStations
-        }
-
-        fun generateBusListFromBusNumbers(buses: List<Bus>, busNumbers: List<String>): List<Bus> {
-            val generatedBuses: MutableList<Bus> = ArrayList()
-            for (busNumber in busNumbers) {
-                val bus = buses.firstOrNull { x -> x.number == busNumber }
-                bus?.let {
-                    generatedBuses.add(it)
-                }
-            }
-            return generatedBuses
-        }
-
-        /**
-         * Returns the schedule for a bus with
-         * it's number passed as parameter.
-         */
-        fun getScheduleFromBusNumber(busNumber: String, schedules: List<Schedule>): Schedule? {
-            return schedules.firstOrNull { x -> x.busNumber == busNumber }
         }
     }
 }
